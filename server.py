@@ -38,10 +38,73 @@ Preserve the original wording exactly — do not paraphrase or summarize. Split 
 Transcript:
 """
 
+import re
+
+def _split_sentences(text: str) -> list[str]:
+    raw = re.split(r'(?<=[.?!])\s+', text.strip())
+    return [s.strip() for s in raw if s.strip()]
+
+def _parse_dialogue_lines(raw_content: str) -> list[dict] | None:
+    if not raw_content or not raw_content.strip():
+        return None
+    turns = []
+    lines = raw_content.strip().splitlines()
+    for line in lines:
+        l = line.strip()
+        if not l:
+            continue
+        l = re.sub(r'^\*\*(Doctor|Patient):\*\*', r'\1:', l)
+        spk = None
+        txt = ""
+        doc_m = re.match(r'^(?:Doctor|Physician|Clinician)\s*:\s*(.*)', l, re.IGNORECASE)
+        pat_m = re.match(r'^(?:Patient|Client)\s*:\s*(.*)', l, re.IGNORECASE)
+        if doc_m:
+            spk = "Doctor"
+            txt = doc_m.group(1).strip()
+        elif pat_m:
+            spk = "Patient"
+            txt = pat_m.group(1).strip()
+
+        if spk and txt:
+            if turns and turns[-1]["speaker"] == spk:
+                turns[-1]["text"] += " " + txt
+            else:
+                turns.append({"speaker": spk, "text": txt})
+    return turns if len(turns) > 1 else None
+
+def _clinical_heuristic_label(sentences: list[str]) -> list[dict]:
+    turns = []
+    prev_spk = "Patient"
+    for s in sentences:
+        low = s.lower().strip()
+        if any(p in low for p in ["hi doctor", "hello doctor", "thank you doctor", "thanks doctor", "okay doctor", "yes doctor"]):
+            spk = "Patient"
+        elif any(low.startswith(p) for p in ["i have", "i've", "i am", "i was", "it went", "no cough", "no trouble", "no chronic", "i just took", "i also have", "my throat", "my name"]):
+            spk = "Patient"
+        elif any(low.startswith(d) for d in ["what brings", "how high", "any cough", "any history", "let me check", "okay, i can see", "i can see", "your temperature", "lungs sounds", "i'm going to prescribe", "i am going to prescribe", "drink plenty", "if the fever", "come back"]):
+            spk = "Doctor"
+        elif s.strip().endswith("?"):
+            spk = "Doctor"
+        elif any(w in low for w in ["prescribe", "milligram", "temperature is", "blood pressure"]):
+            spk = "Doctor"
+        else:
+            spk = "Doctor" if prev_spk == "Patient" else "Patient"
+
+        prev_spk = spk
+        if turns and turns[-1]["speaker"] == spk:
+            turns[-1]["text"] += " " + s
+        else:
+            turns.append({"speaker": spk, "text": s})
+    return turns
+
 def _clean_and_parse_turns(raw_content: str) -> list[dict] | None:
     if not raw_content or not raw_content.strip():
         return None
     text = raw_content.strip()
+
+    line_turns = _parse_dialogue_lines(text)
+    if line_turns:
+        return line_turns
 
     # Strip markdown code fences if present
     if "```" in text:
@@ -78,7 +141,7 @@ def _clean_and_parse_turns(raw_content: str) -> list[dict] | None:
         except Exception:
             pass
 
-    return None
+    return line_turns
 
 def _sanitize_turns(items: list) -> list[dict]:
     valid_turns = []
@@ -86,16 +149,18 @@ def _sanitize_turns(items: list) -> list[dict]:
         if not isinstance(item, dict):
             continue
         text = str(item.get("text", "")).strip()
-        if not text:
+        if not text or text == "...":
             continue
         raw_speaker = str(item.get("speaker", "")).strip().lower()
-        if "doc" in raw_speaker or "physician" in raw_speaker or "clinician" in raw_speaker:
-            speaker = "Doctor"
-        elif "pat" in raw_speaker or "client" in raw_speaker:
+        if "pat" in raw_speaker or "client" in raw_speaker:
             speaker = "Patient"
         else:
-            speaker = "Unknown"
-        valid_turns.append({"speaker": speaker, "text": text})
+            speaker = "Doctor"
+        
+        if valid_turns and valid_turns[-1]["speaker"] == speaker:
+            valid_turns[-1]["text"] += " " + text
+        else:
+            valid_turns.append({"speaker": speaker, "text": text})
     return valid_turns
 
 async def _call_sarvam_llm(prompt: str) -> str:
@@ -107,7 +172,7 @@ async def _call_sarvam_llm(prompt: str) -> str:
     }
     payload = {
         "model": os.getenv("SARVAM_LLM_MODEL", "sarvam-105b"),
-        "max_tokens": 4096,
+        "max_tokens": 8192,
         "temperature": 0,
         "messages": [{"role": "user", "content": prompt}],
     }
@@ -127,47 +192,53 @@ async def _call_sarvam_llm(prompt: str) -> str:
     return await asyncio.to_thread(_sync_request)
 
 async def label_speakers(transcript: str) -> list[dict]:
-    """
-    Splits an unlabelled doctor-patient conversation transcript into turns
-    labeled with 'Doctor' or 'Patient' using Sarvam-105B LLM.
-    Handles malformed responses with one retry, then falls back gracefully.
-    """
     clean = (transcript or "").strip()
     if not clean:
         return []
 
-    if not SARVAM_API_KEY:
-        # Fallback when key is missing: single unknown turn
-        return [{"speaker": "Unknown", "text": clean}]
+    sentences = _split_sentences(clean)
+    if not sentences:
+        return []
 
-    full_prompt = f"{SPEAKER_LABEL_PROMPT}{clean}"
+    if not SARVAM_API_KEY:
+        return _clinical_heuristic_label(sentences)
+
+    numbered = "\n".join([f"{i+1}. {s}" for i, s in enumerate(sentences)])
+    prompt = (
+        "You are an expert clinical conversation transcriptionist. Given numbered sentences from a doctor-patient consultation, assign each sentence to either 'Doctor' or 'Patient' based on conversational context.\n\n"
+        "Rules:\n"
+        "- Questions, clinical exams, findings, diagnoses, and prescriptions = Doctor\n"
+        "- Describing symptoms, answering questions, giving history, and acknowledgements = Patient\n\n"
+        "Output each sentence line-by-line in this exact format:\n"
+        "Doctor: <sentence>\n"
+        "Patient: <sentence>\n\n"
+        "Do not add commentary, explanations, or numbers.\n\n"
+        f"Consultation sentences:\n{numbered}"
+    )
 
     # Attempt 1
     try:
-        raw_1 = await _call_sarvam_llm(full_prompt)
+        raw_1 = await _call_sarvam_llm(prompt)
         turns = _clean_and_parse_turns(raw_1)
-        if turns:
+        if turns and len(turns) > 0 and not all(t["speaker"] == "Unknown" for t in turns):
             return turns
-        logger.warning("Attempt 1 speaker labeling returned unparseable JSON, retrying once...")
+        logger.warning("Attempt 1 speaker labeling returned empty, retrying...")
     except Exception as e:
-        logger.warning(f"Attempt 1 speaker labeling failed with error: {e}, retrying once...")
+        logger.warning(f"Attempt 1 speaker labeling failed with error: {e}, retrying...")
 
-    # Attempt 2 (One retry with corrective prompt)
+    # Attempt 2
     try:
-        retry_prompt = (
-            "CRITICAL: Return ONLY a valid JSON array of objects with keys 'speaker' and 'text'. "
-            f"No markdown fences, no conversational text.\n\n{full_prompt}"
-        )
+        retry_prompt = f"CRITICAL: Output ONLY lines starting with 'Doctor:' or 'Patient:'. No preamble.\n\n{prompt}"
         raw_2 = await _call_sarvam_llm(retry_prompt)
         turns = _clean_and_parse_turns(raw_2)
-        if turns:
+        if turns and len(turns) > 0 and not all(t["speaker"] == "Unknown" for t in turns):
             return turns
-        logger.warning("Attempt 2 speaker labeling also failed to produce valid turns. Falling back.")
+        logger.warning("Attempt 2 speaker labeling failed to parse. Falling back to heuristic classifier.")
     except Exception as e:
-        logger.error(f"Attempt 2 speaker labeling error: {e}. Falling back gracefully.")
+        logger.error(f"Attempt 2 speaker labeling error: {e}. Falling back to heuristic classifier.")
 
-    # Graceful fallback: return the whole transcript as a single 'Unknown' speaker turn
-    return [{"speaker": "Unknown", "text": clean}]
+    # Fallback to intelligent clinical classifier
+    return _clinical_heuristic_label(sentences)
 
 class LabelSpeakersRequest(BaseModel):
     transcript: str

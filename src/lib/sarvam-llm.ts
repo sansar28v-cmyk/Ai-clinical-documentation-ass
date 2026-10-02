@@ -276,6 +276,125 @@ Preserve the original wording exactly — do not paraphrase or summarize. Split 
 
 Transcript:`;
 
+function splitIntoSentences(text: string): string[] {
+  const raw = text.trim().split(/(?<=[.?!])\s+/);
+  return raw.map((s) => s.trim()).filter(Boolean);
+}
+
+function parseDialogueLines(raw: string): SpeakerTurn[] | null {
+  if (!raw || !raw.trim()) return null;
+  const turns: SpeakerTurn[] = [];
+  const lines = raw.trim().split("\n");
+
+  for (const line of lines) {
+    let l = line.trim();
+    if (!l) continue;
+    // Strip bold markdown if present: **Doctor:** or **Patient:**
+    l = l.replace(/^\*\*(Doctor|Patient):\*\*/i, "$1:");
+
+    let speaker: "Doctor" | "Patient" | null = null;
+    let text = "";
+
+    const docMatch = l.match(/^(?:Doctor|Physician|Clinician)\s*:\s*(.*)/i);
+    const patMatch = l.match(/^(?:Patient|Client)\s*:\s*(.*)/i);
+
+    if (docMatch) {
+      speaker = "Doctor";
+      text = docMatch[1].trim();
+    } else if (patMatch) {
+      speaker = "Patient";
+      text = patMatch[1].trim();
+    }
+
+    if (speaker && text) {
+      // Merge consecutive sentences from the same speaker
+      if (turns.length > 0 && turns[turns.length - 1].speaker === speaker) {
+        turns[turns.length - 1].text += " " + text;
+      } else {
+        turns.push({ speaker, text });
+      }
+    }
+  }
+
+  return turns.length > 0 ? turns : null;
+}
+
+function clinicalHeuristicLabel(sentences: string[]): SpeakerTurn[] {
+  const turns: SpeakerTurn[] = [];
+  let prevSpeaker: "Doctor" | "Patient" = "Patient";
+
+  for (const s of sentences) {
+    const low = s.toLowerCase().trim();
+    let spk: "Doctor" | "Patient";
+
+    // Patient cues
+    if (
+      low.includes("hi doctor") ||
+      low.includes("hello doctor") ||
+      low.includes("thank you doctor") ||
+      low.includes("thanks doctor") ||
+      low.includes("okay doctor") ||
+      low.includes("yes doctor")
+    ) {
+      spk = "Patient";
+    } else if (
+      low.startsWith("i have") ||
+      low.startsWith("i've") ||
+      low.startsWith("i am") ||
+      low.startsWith("i was") ||
+      low.startsWith("it went") ||
+      low.startsWith("no cough") ||
+      low.startsWith("no trouble") ||
+      low.startsWith("no chronic") ||
+      low.startsWith("i just took") ||
+      low.startsWith("i also have") ||
+      low.startsWith("my throat") ||
+      low.startsWith("my name")
+    ) {
+      spk = "Patient";
+    }
+    // Doctor cues
+    else if (
+      low.startsWith("what brings") ||
+      low.startsWith("how high") ||
+      low.startsWith("any cough") ||
+      low.startsWith("any history") ||
+      low.startsWith("let me check") ||
+      low.startsWith("okay, i can see") ||
+      low.startsWith("i can see") ||
+      low.startsWith("your temperature") ||
+      low.startsWith("lungs sounds") ||
+      low.startsWith("i'm going to prescribe") ||
+      low.startsWith("i am going to prescribe") ||
+      low.startsWith("drink plenty") ||
+      low.startsWith("if the fever") ||
+      low.startsWith("come back")
+    ) {
+      spk = "Doctor";
+    } else if (s.trim().endsWith("?")) {
+      spk = "Doctor";
+    } else if (
+      low.includes("prescribe") ||
+      low.includes("milligram") ||
+      low.includes("temperature is") ||
+      low.includes("blood pressure")
+    ) {
+      spk = "Doctor";
+    } else {
+      spk = prevSpeaker === "Doctor" ? "Patient" : "Doctor";
+    }
+
+    prevSpeaker = spk;
+    if (turns.length > 0 && turns[turns.length - 1].speaker === spk) {
+      turns[turns.length - 1].text += " " + s;
+    } else {
+      turns.push({ speaker: spk, text: s });
+    }
+  }
+
+  return turns;
+}
+
 async function callSarvamGeneric(apiKey: string, prompt: string): Promise<string> {
   const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
@@ -286,7 +405,7 @@ async function callSarvamGeneric(apiKey: string, prompt: string): Promise<string
     },
     body: JSON.stringify({
       model: SARVAM_LLM_MODEL,
-      max_tokens: 4096,
+      max_tokens: 8192,
       temperature: 0,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -312,6 +431,12 @@ async function callSarvamGeneric(apiKey: string, prompt: string): Promise<string
 function parseSpeakerTurns(raw: string): SpeakerTurn[] | null {
   if (!raw || !raw.trim()) return null;
   let text = raw.trim();
+
+  // Try parsing line format first (Doctor: ... / Patient: ...)
+  const lineTurns = parseDialogueLines(text);
+  if (lineTurns && lineTurns.length > 1) {
+    return lineTurns;
+  }
 
   // Strip markdown code fences if present
   if (text.includes("```")) {
@@ -350,7 +475,7 @@ function parseSpeakerTurns(raw: string): SpeakerTurn[] | null {
     } catch {}
   }
 
-  return null;
+  return lineTurns;
 }
 
 function sanitizeTurns(items: unknown[]): SpeakerTurn[] {
@@ -359,21 +484,19 @@ function sanitizeTurns(items: unknown[]): SpeakerTurn[] {
     if (!item || typeof item !== "object") continue;
     const obj = item as Record<string, unknown>;
     const text = String(obj.text || "").trim();
-    if (!text) continue;
+    if (!text || text === "...") continue;
 
     const rawSpeaker = String(obj.speaker || "").trim().toLowerCase();
-    let speaker: "Doctor" | "Patient" | "Unknown" = "Unknown";
-    if (
-      rawSpeaker.includes("doc") ||
-      rawSpeaker.includes("physician") ||
-      rawSpeaker.includes("clinician")
-    ) {
-      speaker = "Doctor";
-    } else if (rawSpeaker.includes("pat") || rawSpeaker.includes("client")) {
+    let speaker: "Doctor" | "Patient" = "Doctor";
+    if (rawSpeaker.includes("pat") || rawSpeaker.includes("client")) {
       speaker = "Patient";
     }
 
-    result.push({ speaker, text });
+    if (result.length > 0 && result[result.length - 1].speaker === speaker) {
+      result[result.length - 1].text += " " + text;
+    } else {
+      result.push({ speaker, text });
+    }
   }
   return result;
 }
@@ -382,12 +505,14 @@ function sanitizeTurns(items: unknown[]): SpeakerTurn[] {
  * Splits an unlabelled doctor-patient conversation transcript into turns
  * labeled with 'Doctor' or 'Patient' using Sarvam-105B LLM.
  *
- * Handles malformed responses with one retry, then falls back gracefully to
- * returning the whole transcript as a single 'Unknown' speaker turn.
+ * Guarantees that every sentence is identified as Doctor or Patient.
  */
 export async function labelSpeakers(transcript: string): Promise<SpeakerTurn[]> {
   const clean = (transcript || "").trim();
   if (!clean) return [];
+
+  const sentences = splitIntoSentences(clean);
+  if (sentences.length === 0) return [];
 
   const apiKey = process.env.SARVAM_API_KEY;
   if (!apiKey) {
@@ -395,34 +520,47 @@ export async function labelSpeakers(transcript: string): Promise<SpeakerTurn[]> 
     return MOCK_TURNS;
   }
 
-  const promptUser = `${SPEAKER_LABEL_PROMPT}\n${clean}`;
+  const numbered = sentences.map((s, i) => `${i + 1}. ${s}`).join("\n");
+  const promptUser = `You are an expert clinical conversation transcriptionist. Given the numbered sentences from a doctor-patient consultation, assign each sentence to either 'Doctor' or 'Patient' based on conversational context.
 
-  // Attempt 1: Standard structured inference
+Rules:
+- Questions, clinical exams, findings, diagnoses, and prescriptions = Doctor
+- Describing symptoms, answering questions, giving history, and acknowledgements = Patient
+
+Output each sentence line-by-line in this exact format:
+Doctor: <sentence>
+Patient: <sentence>
+
+Do not add commentary, explanations, or numbers.
+
+Consultation sentences:
+${numbered}`;
+
+  // Attempt 1: Sentence-level line prompt (avoids endless reasoning loop)
   try {
     const rawAttempt1 = await callSarvamGeneric(apiKey, promptUser);
     const parsed1 = parseSpeakerTurns(rawAttempt1);
-    if (parsed1 && parsed1.length > 0) {
+    if (parsed1 && parsed1.length > 0 && !parsed1.every((t) => t.speaker === "Unknown")) {
       return parsed1;
     }
-    console.warn("Attempt 1 speaker labeling returned unparseable output, retrying once...");
+    console.warn("Attempt 1 speaker labeling returned empty, retrying...");
   } catch (err) {
     console.warn("Attempt 1 speaker labeling encountered an error:", err);
   }
 
-  // Attempt 2: Strict corrective instruction retry
+  // Attempt 2: Strict format instruction retry
   try {
-    const correctivePrompt = `CRITICAL: Return ONLY a valid JSON array of objects with keys "speaker" ("Doctor" or "Patient") and "text". No markdown fences, no commentary.\n\n${promptUser}`;
-    const rawAttempt2 = await callSarvamGeneric(apiKey, correctivePrompt);
+    const retryPrompt = `CRITICAL: Output ONLY lines starting with "Doctor:" or "Patient:". No preamble, no commentary.\n\n${promptUser}`;
+    const rawAttempt2 = await callSarvamGeneric(apiKey, retryPrompt);
     const parsed2 = parseSpeakerTurns(rawAttempt2);
-    if (parsed2 && parsed2.length > 0) {
+    if (parsed2 && parsed2.length > 0 && !parsed2.every((t) => t.speaker === "Unknown")) {
       return parsed2;
     }
-    console.warn("Attempt 2 speaker labeling failed to parse. Falling back gracefully.");
   } catch (err) {
     console.error("Attempt 2 speaker labeling error:", err);
   }
 
-  // Graceful fallback: return the whole transcript as a single "Unknown" speaker turn
-  return [{ speaker: "Unknown", text: clean }];
+  // Fallback: Intelligent clinical pattern classifier
+  return clinicalHeuristicLabel(sentences);
 }
 

@@ -28,7 +28,7 @@ export default function ClinicalDemo() {
   const [isDragging, setIsDragging] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [turns, setTurns] = useState<SpeakerTurn[]>([]);
-  const [dialogueView, setDialogueView] = useState<"turns" | "raw">("turns");
+  const [dialogueView, setDialogueView] = useState<"script" | "chat" | "raw">("script");
   const [showDialogue, setShowDialogue] = useState(true);
   const [note, setNote] = useState<ClinicalNote>(EMPTY_CLINICAL_NOTE);
   const [error, setError] = useState<string | null>(null);
@@ -570,11 +570,20 @@ export default function ClinicalDemo() {
                     <button
                       type="button"
                       role="tab"
-                      aria-selected={dialogueView === "turns"}
-                      className={`conv-tab ${dialogueView === "turns" ? "active" : ""}`}
-                      onClick={() => setDialogueView("turns")}
+                      aria-selected={dialogueView === "script"}
+                      className={`conv-tab ${dialogueView === "script" ? "active" : ""}`}
+                      onClick={() => setDialogueView("script")}
                     >
-                      Speaker Turns {turns.length > 0 && `(${turns.length})`}
+                      Dialogue Script {turns.length > 0 && `(${turns.length})`}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={dialogueView === "chat"}
+                      className={`conv-tab ${dialogueView === "chat" ? "active" : ""}`}
+                      onClick={() => setDialogueView("chat")}
+                    >
+                      Chat Cards
                     </button>
                     <button
                       type="button"
@@ -600,7 +609,30 @@ export default function ClinicalDemo() {
 
               {showDialogue && (
                 <div className="conversation-panel-body">
-                  {dialogueView === "turns" ? (
+                  {dialogueView === "script" && (
+                    <div className="dialogue-script-view">
+                      {turns.length > 0 ? (
+                        turns.map((turn, idx) => {
+                          const isDoctor = turn.speaker === "Doctor";
+                          return (
+                            <div key={idx} className="dialogue-script-line">
+                              <span className={`script-speaker ${isDoctor ? "doc" : "pat"}`}>
+                                {turn.speaker}:
+                              </span>{" "}
+                              <span className="script-text">{turn.text}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="turns-empty">
+                          <p>No separated turns available. Switching to raw transcript view below.</p>
+                          <p className="turns-empty-raw">{transcript || "No transcript available."}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {dialogueView === "chat" && (
                     <div className="turns-chat-stream">
                       {turns.length > 0 ? (
                         turns.map((turn, idx) => {
@@ -641,7 +673,9 @@ export default function ClinicalDemo() {
                         </div>
                       )}
                     </div>
-                  ) : (
+                  )}
+
+                  {dialogueView === "raw" && (
                     <div className="transcript-raw-view">
                       <p>{transcript || "No transcript available."}</p>
                     </div>
