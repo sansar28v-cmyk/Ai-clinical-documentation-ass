@@ -48,7 +48,12 @@ interface SarvamChatResponse {
   }>;
 }
 
+function cleanApiKey(key: string): string {
+  return (key || "").trim().replace(/^["']|["']$/g, "").trim();
+}
+
 async function callSarvam(apiKey: string, transcript: string, retryHint?: string): Promise<string> {
+  const clean = cleanApiKey(apiKey);
   const userContent = retryHint
     ? `${retryHint}\n\nConsultation transcript:\n"""\n${transcript}\n"""`
     : `Consultation transcript:\n"""\n${transcript}\n"""`;
@@ -56,8 +61,8 @@ async function callSarvam(apiKey: string, transcript: string, retryHint?: string
   const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
     headers: {
-      "api-subscription-key": apiKey,
-      "Authorization": `Bearer ${apiKey}`,
+      "api-subscription-key": clean,
+      "Authorization": `Bearer ${clean}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -221,7 +226,8 @@ function createFallbackNoteFromTranscript(transcript: string): ClinicalNote {
  * corrective instruction before surfacing a clear error to the caller.
  */
 export async function extractClinicalNote(transcript: string): Promise<ClinicalNote> {
-  const apiKey = process.env.SARVAM_API_KEY;
+  const rawKey = process.env.SARVAM_API_KEY;
+  const apiKey = cleanApiKey(rawKey || "");
   if (!apiKey) {
     // Demo mode: no API key configured — serve the realistic sample note so the
     // end-to-end flow stays fully demoable (the UI labels this clearly).
@@ -396,11 +402,12 @@ function clinicalHeuristicLabel(sentences: string[]): SpeakerTurn[] {
 }
 
 async function callSarvamGeneric(apiKey: string, prompt: string): Promise<string> {
+  const clean = cleanApiKey(apiKey);
   const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
     method: "POST",
     headers: {
-      "api-subscription-key": apiKey,
-      "Authorization": `Bearer ${apiKey}`,
+      "api-subscription-key": clean,
+      "Authorization": `Bearer ${clean}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -514,7 +521,8 @@ export async function labelSpeakers(transcript: string): Promise<SpeakerTurn[]> 
   const sentences = splitIntoSentences(clean);
   if (sentences.length === 0) return [];
 
-  const apiKey = process.env.SARVAM_API_KEY;
+  const rawKey = process.env.SARVAM_API_KEY;
+  const apiKey = cleanApiKey(rawKey || "");
   if (!apiKey) {
     // Demo mode: Return realistic mock speaker turns
     return MOCK_TURNS;
