@@ -23,6 +23,16 @@ const PROCESSING_STEPS = [
 
 type InputMode = "live" | "upload";
 
+export interface RedFlagAlert {
+  pattern_id: string;
+  pattern_name: string;
+  severity: string;
+  message: string;
+  triggered_keywords: string[];
+  disclaimer: string;
+  timestamp?: string;
+}
+
 interface ClinicalDemoProps {
   onRequestLogin?: () => void;
   onNavigateToDashboard?: () => void;
@@ -59,6 +69,9 @@ export default function ClinicalDemo({
   const [livePartial, setLivePartial] = useState("");
   const [detectedLang, setDetectedLang] = useState<string | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
+
+  // Live Red-Flag Danger Alerts state
+  const [redFlags, setRedFlags] = useState<RedFlagAlert[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -121,12 +134,55 @@ export default function ClinicalDemo({
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   }
 
+  function acknowledgeAlert(patternId: string) {
+    setRedFlags((prev) => prev.filter((a) => a.pattern_id !== patternId));
+  }
+
+  useEffect(() => {
+    // Hidden developer/eval helper for browser console testing: window.__testRedFlag("chest pain shortness of breath")
+    (window as unknown as { __testRedFlag?: (text: string) => void }).__testRedFlag = async (testText: string) => {
+      try {
+        const res = await fetch("http://localhost:8000/api/check-red-flags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: testText }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.triggered_patterns) {
+            data.triggered_patterns.forEach((alert: any) => {
+              const alertData: RedFlagAlert = {
+                pattern_id: alert.pattern_id,
+                pattern_name: alert.pattern_name,
+                severity: alert.severity || "critical",
+                message: alert.message,
+                triggered_keywords: alert.triggered_keywords || [],
+                disclaimer:
+                  alert.disclaimer ||
+                  "Advisory flag only — not a diagnosis. Clinical judgment remains with the doctor.",
+                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+              };
+              setRedFlags((prev) => {
+                if (prev.some((a) => a.pattern_id === alertData.pattern_id)) return prev;
+                return [...prev, alertData];
+              });
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Console test red flag error:", e);
+      }
+    };
+  }, []);
+
+
   async function startLiveRecording() {
     setError(null);
     setLiveSegments([]);
     setLivePartial("");
     setDetectedLang(null);
     setRecordingDuration(0);
+    setRedFlags([]);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -192,6 +248,22 @@ export default function ClinicalDemo({
             }
             setLivePartial("");
             if (msg.language) setDetectedLang(msg.language);
+          } else if (msg.type === "red_flag_alert") {
+            const alertData: RedFlagAlert = {
+              pattern_id: msg.pattern_id || `flag-${Date.now()}`,
+              pattern_name: msg.pattern_name || "Emergency Warning",
+              severity: msg.severity || "critical",
+              message: msg.message || "Potential emergency symptom combination detected in live conversation.",
+              triggered_keywords: Array.isArray(msg.triggered_keywords) ? msg.triggered_keywords : [],
+              disclaimer:
+                msg.disclaimer ||
+                "Advisory flag only — not a diagnosis. Clinical judgment remains with the doctor.",
+              timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+            };
+            setRedFlags((prev) => {
+              if (prev.some((a) => a.pattern_id === alertData.pattern_id)) return prev;
+              return [...prev, alertData];
+            });
           } else if (msg.type === "error") {
             setError(msg.message || "Streaming transcription error");
           }
@@ -414,6 +486,244 @@ export default function ClinicalDemo({
 
             {inputMode === "live" ? (
               <div className="live-recorder-card">
+                {/* PROMINENT LIVE RED-FLAG ALERT BANNER STACK (TOP OF LIVE CONSULTATION) */}
+                {redFlags.length > 0 && (
+                  <div
+                    className="red-flag-alert-stack"
+                    role="alert"
+                    aria-live="assertive"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "16px",
+                      width: "100%",
+                      marginBottom: "28px",
+                      textAlign: "left",
+                    }}
+                  >
+                    {redFlags.map((flag) => (
+                      <div
+                        key={flag.pattern_id}
+                        className="red-flag-card"
+                        style={{
+                          position: "relative",
+                          background: "linear-gradient(135deg, rgba(75, 12, 12, 0.98) 0%, rgba(127, 29, 29, 0.94) 50%, rgba(153, 27, 27, 0.92) 100%)",
+                          border: "2px solid #ef4444",
+                          borderRadius: "16px",
+                          padding: "20px 24px",
+                          color: "#ffffff",
+                          textAlign: "left",
+                          boxShadow: "0 0 28px rgba(239, 68, 68, 0.4)",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <div
+                          className="red-flag-header"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            flexWrap: "wrap",
+                            gap: "14px",
+                            marginBottom: "14px",
+                            textAlign: "left",
+                          }}
+                        >
+                          <div
+                            className="red-flag-title-wrap"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                              flex: "1 1 auto",
+                              textAlign: "left",
+                            }}
+                          >
+                            <span
+                              className="red-flag-beacon"
+                              style={{
+                                fontSize: "28px",
+                                lineHeight: "1",
+                                display: "inline-block",
+                              }}
+                            >
+                              🚨
+                            </span>
+                            <div style={{ textAlign: "left" }}>
+                              <div
+                                className="red-flag-meta-row"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                  marginBottom: "4px",
+                                  textAlign: "left",
+                                }}
+                              >
+                                <span
+                                  className="red-flag-badge-pill"
+                                  style={{
+                                    display: "inline-block",
+                                    fontSize: "11px",
+                                    fontWeight: 800,
+                                    letterSpacing: "0.06em",
+                                    textTransform: "uppercase",
+                                    background: "#ef4444",
+                                    color: "#ffffff",
+                                    padding: "3px 8px",
+                                    borderRadius: "6px",
+                                  }}
+                                >
+                                  CRITICAL RED FLAG
+                                </span>
+                                {flag.timestamp && (
+                                  <span
+                                    className="red-flag-time"
+                                    style={{
+                                      fontSize: "12px",
+                                      color: "#fca5a5",
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    🕒 {flag.timestamp}
+                                  </span>
+                                )}
+                              </div>
+                              <h4
+                                className="red-flag-pattern-title"
+                                style={{
+                                  margin: 0,
+                                  fontSize: "18px",
+                                  fontWeight: 800,
+                                  color: "#ffffff",
+                                  letterSpacing: "-0.01em",
+                                  textAlign: "left",
+                                }}
+                              >
+                                {flag.pattern_name}
+                              </h4>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="red-flag-ack-btn"
+                            onClick={() => acknowledgeAlert(flag.pattern_id)}
+                            title="Dismiss alert after physician review"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "8px 18px",
+                              background: "#ffffff",
+                              color: "#991b1b",
+                              border: "none",
+                              borderRadius: "999px",
+                              fontSize: "13px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                              marginLeft: "auto",
+                            }}
+                          >
+                            ✓ Acknowledge
+                          </button>
+                        </div>
+
+                        <p
+                          className="red-flag-body-message"
+                          style={{
+                            margin: "0 0 14px 0",
+                            fontSize: "14px",
+                            lineHeight: "1.55",
+                            color: "#fee2e2",
+                            textAlign: "left",
+                          }}
+                        >
+                          {flag.message}
+                        </p>
+
+                        <div
+                          className="red-flag-trigger-box"
+                          style={{
+                            background: "rgba(0, 0, 0, 0.45)",
+                            border: "1px solid rgba(239, 68, 68, 0.35)",
+                            borderRadius: "10px",
+                            padding: "10px 14px",
+                            marginBottom: "14px",
+                            textAlign: "left",
+                          }}
+                        >
+                          <span
+                            className="red-flag-trigger-label"
+                            style={{
+                              display: "block",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              color: "#fca5a5",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              marginBottom: "8px",
+                              textAlign: "left",
+                            }}
+                          >
+                            ⚠️ Triggered Keyword Clusters:
+                          </span>
+                          <div
+                            className="red-flag-keywords-list"
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: "8px",
+                              textAlign: "left",
+                            }}
+                          >
+                            {flag.triggered_keywords.map((kw, i) => (
+                              <span
+                                key={i}
+                                className="red-flag-keyword-pill"
+                                style={{
+                                  display: "inline-block",
+                                  background: "rgba(239, 68, 68, 0.35)",
+                                  border: "1px solid rgba(248, 113, 113, 0.6)",
+                                  color: "#ffffff",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  padding: "4px 10px",
+                                  borderRadius: "6px",
+                                }}
+                              >
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Mandatory Safety Disclaimer */}
+                        <div
+                          className="red-flag-disclaimer-row"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            fontSize: "12px",
+                            color: "#fecaca",
+                            opacity: 0.9,
+                            fontStyle: "italic",
+                            borderTop: "1px solid rgba(239, 68, 68, 0.3)",
+                            paddingTop: "10px",
+                            textAlign: "left",
+                          }}
+                        >
+                          <span>🛡️</span>
+                          <span>{flag.disclaimer}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {!isRecording ? (
                   <div className="live-idle-state">
                     <div className="live-mic-circle">
@@ -422,7 +732,8 @@ export default function ClinicalDemo({
                     <h3 className="live-idle-title">Real-Time Streaming Consultation</h3>
                     <p className="live-idle-desc">
                       Stream consultation audio live from your browser microphone to the FastAPI backend
-                      and Sarvam AI (<code>saaras:v3-realtime</code>). Auto-detects 10–22 Indian languages and English.
+                      and Sarvam AI (<code>saaras:v3-realtime</code>). Auto-detects 10–22 Indian languages and English,
+                      with <strong>live real-time red-flag danger pattern detection</strong> running during the consultation.
                     </p>
                     <button
                       type="button"

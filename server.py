@@ -278,10 +278,32 @@ async def health():
         "sarvam_ws_endpoint": "saaras:v3-realtime (linear16, 16kHz, auto language detection)",
     }
 
+from red_flag_detector import RedFlagSessionDetector, RED_FLAG_PATTERNS
+
+class CheckRedFlagsRequest(BaseModel):
+    transcript: str
+
 @app.post("/api/label-speakers")
 async def api_label_speakers(req: LabelSpeakersRequest):
     turns = await label_speakers(req.transcript)
     return {"turns": turns}
+
+@app.post("/api/check-red-flags")
+async def api_check_red_flags(req: CheckRedFlagsRequest):
+    detector = RedFlagSessionDetector()
+    alerts = detector.process_segment(req.transcript)
+    return {
+        "detected": len(alerts) > 0,
+        "alerts": alerts,
+        "disclaimer": "Advisory flag only — not a diagnosis. Clinical judgment remains with the doctor.",
+    }
+
+@app.get("/api/red-flag-patterns")
+async def api_get_red_flag_patterns():
+    return {
+        "patterns": RED_FLAG_PATTERNS,
+        "disclaimer": "Advisory flag only — not a diagnosis. Clinical judgment remains with the doctor.",
+    }
 
 @app.websocket("/ws/transcribe")
 async def websocket_transcribe(client_ws: WebSocket):
@@ -312,6 +334,9 @@ async def websocket_transcribe(client_ws: WebSocket):
         async with websockets.connect(SARVAM_WS_URL, additional_headers=headers) as sarvam_ws:
             logger.info("Connected upstream to Sarvam Realtime WebSocket")
 
+            # Dedicated session detector for accumulated dialogue red-flags
+            session_detector = RedFlagSessionDetector()
+
             # Task 1: Relay Sarvam messages back to the browser
             async def sarvam_to_client():
                 try:
@@ -330,12 +355,23 @@ async def websocket_transcribe(client_ws: WebSocket):
                                 "utterance_idx": msg.get("utterance_idx"),
                             })
                         elif event == "transcript.final":
+                            final_text = msg.get("text", "")
                             await client_ws.send_json({
                                 "type": "final",
-                                "text": msg.get("text", ""),
+                                "text": final_text,
                                 "language": msg.get("language"),
                                 "utterance_idx": msg.get("utterance_idx"),
                             })
+                            # Real-time Red-Flag Check on final transcript segment
+                            if final_text:
+                                alerts = session_detector.process_segment(final_text)
+                                for alert in alerts:
+                                    logger.warning(
+                                        "🚨 RED-FLAG ALERT: %s | Keywords: %s",
+                                        alert["pattern_name"],
+                                        alert["triggered_keywords"],
+                                    )
+                                    await client_ws.send_json(alert)
                         elif event == "session.begin":
                             await client_ws.send_json({
                                 "type": "session_begin",
@@ -384,6 +420,17 @@ async def websocket_transcribe(client_ws: WebSocket):
                                             "event": "audio_input",
                                             "audio": b64_audio,
                                         }))
+                                elif action == "test_red_flag":
+                                    test_text = payload.get("text", "")
+                                    if test_text:
+                                        alerts = session_detector.process_segment(test_text)
+                                        for alert in alerts:
+                                            logger.warning(
+                                                "🚨 TEST RED-FLAG ALERT: %s | Keywords: %s",
+                                                alert["pattern_name"],
+                                                alert["triggered_keywords"],
+                                            )
+                                            await client_ws.send_json(alert)
                                 elif action in ["flush", "pause"]:
                                     await sarvam_ws.send(json.dumps({"event": "flush"}))
                                 elif action in ["stop", "end"]:

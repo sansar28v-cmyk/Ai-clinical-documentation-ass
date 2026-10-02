@@ -1,3 +1,168 @@
 /* All visual styling for this app lives in /public/styles.css, which is
    loaded via a <link rel="stylesheet"> tag in the root layout so that the
    landing page matches a plain static HTML/CSS/JS implementation exactly. */
+
+/* Live Red-Flag Emergency Alert Box */
+.red-flag-alert-stack {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  width: 100% !important;
+  margin-bottom: 28px !important;
+  text-align: left !important;
+}
+
+.red-flag-card {
+  position: relative !important;
+  background: linear-gradient(135deg, rgba(75, 12, 12, 0.98) 0%, rgba(127, 29, 29, 0.94) 50%, rgba(153, 27, 27, 0.92) 100%) !important;
+  border: 2px solid #ef4444 !important;
+  border-radius: 16px !important;
+  padding: 20px 24px !important;
+  color: #ffffff !important;
+  text-align: left !important;
+  box-shadow: 0 0 28px rgba(239, 68, 68, 0.4) !important;
+  box-sizing: border-box !important;
+}
+
+.red-flag-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 14px !important;
+  margin-bottom: 14px !important;
+  text-align: left !important;
+}
+
+.red-flag-title-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex: 1 1 auto !important;
+  text-align: left !important;
+}
+
+.red-flag-beacon {
+  font-size: 28px !important;
+  line-height: 1 !important;
+  display: inline-block !important;
+}
+
+.red-flag-meta-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-bottom: 4px !important;
+  text-align: left !important;
+}
+
+.red-flag-badge-pill {
+  display: inline-block !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+}
+
+.red-flag-time {
+  font-size: 12px !important;
+  color: #fca5a5 !important;
+  font-weight: 500 !important;
+}
+
+.red-flag-pattern-title {
+  margin: 0 !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.01em !important;
+  text-align: left !important;
+}
+
+.red-flag-ack-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px 18px !important;
+  background: #ffffff !important;
+  color: #991b1b !important;
+  border: none !important;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  margin-left: auto !important;
+  transition: all 0.2s ease !important;
+}
+
+.red-flag-ack-btn:hover {
+  background: #fee2e2 !important;
+  color: #7f1d1d !important;
+  transform: translateY(-1px) !important;
+}
+
+.red-flag-body-message {
+  margin: 0 0 14px 0 !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  color: #fee2e2 !important;
+  text-align: left !important;
+}
+
+.red-flag-trigger-box {
+  background: rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 14px !important;
+  text-align: left !important;
+}
+
+.red-flag-trigger-label {
+  display: block !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #fca5a5 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  margin-bottom: 8px !important;
+  text-align: left !important;
+}
+
+.red-flag-keywords-list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  text-align: left !important;
+}
+
+.red-flag-keyword-pill {
+  display: inline-block !important;
+  background: rgba(239, 68, 68, 0.35) !important;
+  border: 1px solid rgba(248, 113, 113, 0.6) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+}
+
+.red-flag-disclaimer-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 12px !important;
+  color: #fecaca !important;
+  opacity: 0.9 !important;
+  font-style: italic !important;
+  border-top: 1px solid rgba(239, 68, 68, 0.3) !important;
+  padding-top: 10px !important;
+  text-align: left !important;
+}
+

@@ -1505,3 +1505,272 @@
   width: 100%;
   margin-bottom: 12px;
 }
+
+/* ==========================================================================
+   LIVE CLINICAL RED-FLAG DANGER DETECTION SYSTEM
+   Urgent, impossible-to-miss emergency alert banners & simulation triggers
+   ========================================================================== */
+
+@keyframes redFlagPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7), 0 0 25px rgba(220, 38, 38, 0.5);
+    border-color: rgba(239, 68, 68, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0), 0 0 38px rgba(220, 38, 38, 0.7);
+    border-color: rgba(254, 202, 202, 1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), 0 0 25px rgba(220, 38, 38, 0.5);
+    border-color: rgba(239, 68, 68, 0.9);
+  }
+}
+
+@keyframes beaconShake {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  20%, 60% { transform: scale(1.15) rotate(-8deg); }
+  40%, 80% { transform: scale(1.15) rotate(8deg); }
+}
+
+.red-flag-alert-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 24px;
+  z-index: 50;
+}
+
+.red-flag-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(69, 10, 10, 0.95) 0%, rgba(127, 29, 29, 0.92) 50%, rgba(153, 27, 27, 0.88) 100%);
+  border: 2px solid rgba(239, 68, 68, 0.9);
+  border-radius: 18px;
+  padding: 20px 24px;
+  color: #ffffff;
+  animation: redFlagPulse 3s infinite ease-in-out;
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+.red-flag-card-glow {
+  position: absolute;
+  top: -50%;
+  left: -20%;
+  width: 140%;
+  height: 200%;
+  background: radial-gradient(circle at 20% 20%, rgba(239, 68, 68, 0.25) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.red-flag-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.red-flag-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.red-flag-beacon {
+  font-size: 28px;
+  display: inline-block;
+  animation: beaconShake 2.5s infinite ease-in-out;
+}
+
+.red-flag-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.red-flag-badge-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #ef4444;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+}
+
+.red-flag-time {
+  font-size: 12px;
+  color: #fca5a5;
+  font-weight: 500;
+}
+
+.red-flag-pattern-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.red-flag-ack-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #ffffff;
+  color: #991b1b;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.red-flag-ack-btn:hover {
+  background: #fee2e2;
+  color: #7f1d1d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.red-flag-body-message {
+  margin: 0 0 14px 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #fee2e2;
+  font-weight: 500;
+}
+
+.red-flag-trigger-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.red-flag-trigger-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fca5a5;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.red-flag-keywords-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.red-flag-keyword-pill {
+  display: inline-block;
+  background: rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  color: #fef2f2;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.red-flag-disclaimer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #fecaca;
+  opacity: 0.9;
+  font-style: italic;
+  border-top: 1px solid rgba(239, 68, 68, 0.3);
+  padding-top: 10px;
+}
+
+.red-flag-disclaimer-row i {
+  color: #f87171;
+  font-size: 14px;
+}
+
+/* Simulation Tray */
+.red-flag-sim-tray {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+}
+
+.red-flag-sim-tray.pre-recording {
+  margin-top: 24px;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+.red-flag-sim-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sim-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f43f5e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sim-subtitle {
+  font-size: 12px;
+  color: #a1a1aa;
+}
+
+.red-flag-sim-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sim-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e4e4e7;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sim-chip:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  transform: translateY(-1px);
+}
+
