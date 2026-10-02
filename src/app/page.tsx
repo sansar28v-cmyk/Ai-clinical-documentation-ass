@@ -43,16 +43,16 @@ export default function HomePage() {
   return (
     <>
       {/* ---------------- Unified Site Header ---------------- */}
-      <header className="site-header" style={{ position: currentView === "landing" ? "absolute" : "sticky", top: 0, zIndex: 100, background: currentView === "landing" ? "transparent" : "rgba(10, 10, 11, 0.92)", backdropFilter: "blur(12px)", borderBottom: currentView === "landing" ? "none" : "1px solid rgba(255,255,255,0.08)" }}>
+      {/* ---------------- Unified Site Header ---------------- */}
+      <header className={`site-header ${currentView !== "landing" && currentView !== "login" ? "dashboard-header-bar" : ""}`}>
         <div className="header-row">
           <button
             type="button"
             className="logo-btn"
             onClick={() => setCurrentView("landing")}
-            style={{ background: "transparent", border: "none", padding: 0 }}
             aria-label="AI Clinical Documentation Assistant — Home"
           >
-            <img src="/assets/logo.png" alt="" width={52} height={52} />
+            <img src="/assets/logo.png" alt="" width={48} height={48} />
           </button>
 
           <nav aria-label="Primary">
@@ -62,7 +62,6 @@ export default function HomePage() {
                   type="button"
                   onClick={() => setCurrentView("landing")}
                   className={`nav-link ${currentView === "landing" ? "active" : ""}`}
-                  style={{ background: "transparent", border: "none", cursor: "pointer" }}
                 >
                   Home
                 </button>
@@ -75,9 +74,8 @@ export default function HomePage() {
                       type="button"
                       onClick={() => setCurrentView("doctor-dashboard")}
                       className={`nav-link ${currentView === "doctor-dashboard" ? "active" : ""}`}
-                      style={{ background: "transparent", border: "none", cursor: "pointer" }}
                     >
-                      Doctor Dashboard
+                      Dashboard
                     </button>
                   </li>
                   <li>
@@ -85,7 +83,6 @@ export default function HomePage() {
                       type="button"
                       onClick={() => setCurrentView("live-consultation")}
                       className={`nav-link ${currentView === "live-consultation" ? "active" : ""}`}
-                      style={{ background: "transparent", border: "none", cursor: "pointer" }}
                     >
                       New Consultation
                     </button>
@@ -99,42 +96,35 @@ export default function HomePage() {
                     type="button"
                     onClick={() => setCurrentView("patient-dashboard")}
                     className={`nav-link ${currentView === "patient-dashboard" ? "active" : ""}`}
-                    style={{ background: "transparent", border: "none", cursor: "pointer" }}
                   >
-                    My Consultations
+                    My Records
                   </button>
                 </li>
               )}
 
-              <li>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (token && role === "doctor") {
-                      setCurrentView("live-consultation");
-                    } else if (token && role === "patient") {
-                      setCurrentView("patient-dashboard");
-                    } else {
-                      setCurrentView("landing");
-                      setTimeout(() => {
-                        const el = document.getElementById("demo");
-                        if (el) el.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
-                    }
-                  }}
-                  className={`nav-link ${currentView === "live-consultation" ? "active" : ""}`}
-                  style={{ background: "transparent", border: "none", cursor: "pointer" }}
-                >
-                  Product
-                </button>
-              </li>
-
-              {currentView === "landing" && (
-                <li>
-                  <a href="#how-it-works" className="nav-link">
-                    How It Works
-                  </a>
-                </li>
+              {!token && (
+                <>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentView("landing");
+                        setTimeout(() => {
+                          const el = document.getElementById("demo");
+                          if (el) el.scrollIntoView({ behavior: "smooth" });
+                        }, 50);
+                      }}
+                      className="nav-link"
+                    >
+                      Product
+                    </button>
+                  </li>
+                  <li>
+                    <a href="#how-it-works" className="nav-link" onClick={() => setCurrentView("landing")}>
+                      How It Works
+                    </a>
+                  </li>
+                </>
               )}
             </ul>
           </nav>
@@ -142,9 +132,16 @@ export default function HomePage() {
           <div className="nav-auth-group">
             {token && user ? (
               <>
-                <div className={`nav-user-chip ${user.role}`}>
-                  <i className={`fa-solid ${user.role === "doctor" ? "fa-stethoscope" : "fa-user"}`} />
-                  <span>{user.full_name} ({user.role === "doctor" ? "Doctor" : "Patient"})</span>
+                <div className="nav-user-chip" title={`${user.full_name} (${user.role === "doctor" ? "Doctor" : "Patient"})`}>
+                  <i className={`fa-solid ${user.role === "doctor" ? "fa-stethoscope" : "fa-hospital-user"}`} />
+                  <span className="nav-user-name">
+                    {user.role === "doctor" && !user.full_name.toLowerCase().startsWith("dr")
+                      ? `Dr. ${user.full_name}`
+                      : user.full_name}
+                  </span>
+                  <span className="nav-user-role-badge">
+                    {user.role === "doctor" ? "MD" : "Patient"}
+                  </span>
                 </div>
                 <button
                   type="button"
