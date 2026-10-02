@@ -175,76 +175,136 @@ export default function DoctorDashboard({
             )}
           </div>
         ) : (
-          <div className="table-responsive-wrapper">
-            <table className="consultations-table">
-              <thead>
-                <tr>
-                  <th>Patient Name</th>
-                  <th>Date &amp; Time</th>
-                  <th>Chief Complaint</th>
-                  <th>Dialogue Turns</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredConsultations.map((item) => {
-                  const dateStr = new Date(item.created_at).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true,
-                  });
-                  const turnsCount = (item.turns || []).length;
-                  const complaint = item.note?.chief_complaint || "Routine Consultation";
+          <>
+            <div className="table-responsive-wrapper desktop-only-table">
+              <table className="consultations-table">
+                <thead>
+                  <tr>
+                    <th>Patient Name</th>
+                    <th>Date &amp; Time</th>
+                    <th>Chief Complaint</th>
+                    <th>Dialogue Turns</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: "right" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredConsultations.map((item) => {
+                    const dateStr = new Date(item.created_at).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    });
+                    const turnsCount = (item.turns || []).length;
+                    const complaint = item.note?.chief_complaint || "Routine Consultation";
 
-                  return (
-                    <tr key={item.id} className="consultation-row">
-                      <td className="patient-cell">
+                    return (
+                      <tr key={item.id} className="consultation-row">
+                        <td className="patient-cell">
+                          <div className="patient-avatar-mini">
+                            <i className="fa-regular fa-user" />
+                          </div>
+                          <div>
+                            <span className="patient-name-text">{item.patient_name}</span>
+                            <span className="consultation-id-sub">Record #{item.id}</span>
+                          </div>
+                        </td>
+                        <td className="date-cell">
+                          <i className="fa-regular fa-calendar-days" /> {dateStr}
+                        </td>
+                        <td className="complaint-cell">
+                          <span className="complaint-text" title={complaint}>
+                            {complaint}
+                          </span>
+                        </td>
+                        <td className="turns-cell">
+                          <span className="turns-pill">
+                            <i className="fa-solid fa-comments" /> {turnsCount} turns
+                          </span>
+                        </td>
+                        <td className="status-cell">
+                          <span className="status-tag finalized">
+                            <span className="status-dot" /> Finalized
+                          </span>
+                        </td>
+                        <td className="action-cell">
+                          <button
+                            type="button"
+                            onClick={() => onViewConsultation(item.id)}
+                            className="btn-view-record"
+                          >
+                            <span>View</span>
+                            <i className="fa-solid fa-chevron-right" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Stacked Card View (Shown on screens <= 768px) */}
+            <div className="consultations-mobile-cards mobile-only-cards">
+              {filteredConsultations.map((item) => {
+                const dateStr = new Date(item.created_at).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                });
+                const turnsCount = (item.turns || []).length;
+                const complaint = item.note?.chief_complaint || "Routine Consultation";
+
+                return (
+                  <div key={item.id} className="consultation-mobile-card">
+                    <div className="mobile-card-top">
+                      <div className="mobile-patient-profile">
                         <div className="patient-avatar-mini">
                           <i className="fa-regular fa-user" />
                         </div>
-                        <div>
+                        <div className="mobile-patient-names">
                           <span className="patient-name-text">{item.patient_name}</span>
                           <span className="consultation-id-sub">Record #{item.id}</span>
                         </div>
-                      </td>
-                      <td className="date-cell">
+                      </div>
+                      <span className="status-tag finalized">
+                        <span className="status-dot" /> Finalized
+                      </span>
+                    </div>
+
+                    <div className="mobile-card-complaint">
+                      <span className="mobile-field-label">Chief Complaint:</span>
+                      <p className="mobile-complaint-value">{complaint}</p>
+                    </div>
+
+                    <div className="mobile-card-meta-row">
+                      <span className="mobile-meta-date">
                         <i className="fa-regular fa-calendar-days" /> {dateStr}
-                      </td>
-                      <td className="complaint-cell">
-                        <span className="complaint-text" title={complaint}>
-                          {complaint}
-                        </span>
-                      </td>
-                      <td className="turns-cell">
-                        <span className="turns-pill">
-                          <i className="fa-solid fa-comments" /> {turnsCount} turns
-                        </span>
-                      </td>
-                      <td className="status-cell">
-                        <span className="status-tag finalized">
-                          <span className="status-dot" /> Finalized
-                        </span>
-                      </td>
-                      <td className="action-cell">
-                        <button
-                          type="button"
-                          onClick={() => onViewConsultation(item.id)}
-                          className="btn-view-record"
-                        >
-                          <span>View</span>
-                          <i className="fa-solid fa-chevron-right" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </span>
+                      <span className="turns-pill">
+                        <i className="fa-solid fa-comments" /> {turnsCount} turns
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onViewConsultation(item.id)}
+                      className="btn-view-record mobile-card-action-btn"
+                    >
+                      <span>View Clinical Record</span>
+                      <i className="fa-solid fa-chevron-right" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>

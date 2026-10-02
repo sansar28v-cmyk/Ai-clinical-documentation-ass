@@ -2300,3 +2300,385 @@ button {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
 }
+
+
+/* =========================================================
+   RESPONSIVE MOBILE RULES (<= 768px & down to 320px)
+   Live Consultation, Speaker Diarization & Review/Edit Form
+   ========================================================= */
+
+@media (max-width: 768px) {
+  /* --- Live Consultation Screen --- */
+  .live-recorder-card {
+    padding: 24px 16px !important;
+    border-radius: 18px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .live-idle-state {
+    gap: 14px !important;
+    text-align: center !important;
+  }
+
+  .live-idle-title {
+    font-size: 19px !important;
+    line-height: 1.3 !important;
+  }
+
+  .live-idle-desc {
+    font-size: 13.5px !important;
+    line-height: 1.5 !important;
+  }
+
+  .live-start-btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 15px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .live-active-state {
+    gap: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .live-header-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Live transcript container: proper text wrapping, fixed max-height, internal scroll */
+  .live-transcript-container {
+    padding: 14px 14px !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .live-transcript-content {
+    min-height: 100px !important;
+    max-height: 190px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    font-size: 14px !important;
+    line-height: 1.55 !important;
+  }
+
+  /* Start/End Consultation buttons properly sized and spaced on mobile */
+  .live-actions-bar {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+    margin-top: 14px !important;
+  }
+
+  .live-finish-btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 14.5px !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .live-cancel-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    font-size: 14px !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .demo-privacy {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+    margin-top: 12px !important;
+  }
+
+  /* --- Speaker Turns (Diarization Dialogue) --- */
+  .conversation-panel {
+    border-radius: 18px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-bottom: 20px !important;
+  }
+
+  .conversation-panel-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 16px 14px !important;
+  }
+
+  .conversation-head-left {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .conversation-panel-title {
+    font-size: 15px !important;
+  }
+
+  .ai-inferred-badge {
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+  }
+
+  .conversation-head-right {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .conversation-view-tabs {
+    width: 100% !important;
+    display: flex !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+    padding-bottom: 2px !important;
+  }
+
+  .conv-tab {
+    flex: 1 1 auto !important;
+    min-height: 40px !important;
+    font-size: 11.5px !important;
+    padding: 6px 8px !important;
+    text-align: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
+
+  .conv-collapse-btn {
+    width: 100% !important;
+    min-height: 38px !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+  }
+
+  .conversation-panel-body {
+    padding: 14px !important;
+    max-height: 460px !important;
+    overflow-y: auto !important;
+  }
+
+  .dialogue-script-line {
+    padding: 8px 10px !important;
+    font-size: 13.5px !important;
+    line-height: 1.5 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .turn-bubble-wrapper {
+    padding: 10px 12px !important;
+    gap: 10px !important;
+    margin-bottom: 10px !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .turn-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    font-size: 13px !important;
+  }
+
+  .turn-text {
+    font-size: 13.5px !important;
+    line-height: 1.5 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* --- Review/Edit Note Form --- */
+  .note-form {
+    padding: 16px 14px !important;
+    border-radius: 18px !important;
+    gap: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .note-field {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+
+  .note-field-head {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .note-field label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    margin-bottom: 2px !important;
+  }
+
+  .note-field-help {
+    font-size: 11.5px !important;
+    color: var(--muted) !important;
+    margin: 0 0 6px !important;
+    line-height: 1.4 !important;
+  }
+
+  .note-field input {
+    width: 100% !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    font-size: 14px !important;
+    padding: 10px 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  .note-field textarea {
+    width: 100% !important;
+    min-height: 86px !important;
+    font-size: 14px !important;
+    padding: 10px 14px !important;
+    line-height: 1.5 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Demo card and container */
+  .demo-card {
+    padding: 20px 14px !important;
+    border-radius: 20px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .review-wrap {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .review-banner {
+    padding: 14px !important;
+    border-radius: 14px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .review-banner p {
+    font-size: 13.5px !important;
+    margin: 0 !important;
+  }
+
+  .review-banner button {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .demo-mode-tabs {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .demo-mode-tab {
+    flex: 1 1 auto !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+    font-size: 13px !important;
+    padding: 8px 14px !important;
+  }
+
+  .export-actions {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .export-actions button {
+    width: 100% !important;
+    min-height: 46px !important;
+    justify-content: center !important;
+  }
+
+  .btn-dashboard-jump {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .dropzone {
+    padding: 24px 14px !important;
+  }
+
+  .dropzone-title {
+    font-size: 14px !important;
+  }
+
+  .dropzone-help {
+    font-size: 12px !important;
+  }
+
+  .file-preview {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .file-preview button {
+    width: 100% !important;
+    min-height: 46px !important;
+    justify-content: center !important;
+  }
+}
+
+/* Extra small screens (<= 360px & down to 320px) */
+@media (max-width: 360px) {
+  .live-recorder-card {
+    padding: 18px 12px !important;
+  }
+
+  .live-idle-title {
+    font-size: 17px !important;
+  }
+
+  .note-form {
+    padding: 14px 10px !important;
+  }
+
+  .note-field input {
+    font-size: 13.5px !important;
+  }
+
+  .note-field textarea {
+    font-size: 13.5px !important;
+  }
+
+  .turn-bubble-wrapper {
+    padding: 8px 10px !important;
+  }
+
+  .turn-text {
+    font-size: 13px !important;
+  }
+
+  .demo-card {
+    padding: 16px 10px !important;
+  }
+}
