@@ -1,54 +1,47 @@
 /* =========================================================
-   AUTH, DASHBOARD & CONSULTATION DETAIL STYLING (Healthcare Calm Blue Theme)
+   AUTH, DASHBOARD & CLINICAL RECORDS
+   Aesthetic: Dark Charcoal Glass & Pure White Pill UI (Matching Hero & Site Theme)
    ========================================================= */
 
 /* --- Navigation User Profile Badge & Logout --- */
 .nav-auth-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .nav-user-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  height: clamp(40px, 4.8vw, 46px);
+  padding: 0 clamp(14px, 2vw, 18px);
+  background: var(--pill-dark, #28282a);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #ffffff;
+  box-shadow: var(--nav-shadow, 0 4px 14px rgba(0, 0, 0, 0.16));
+}
+
+.nav-user-chip i {
+  color: #ffffff;
   font-size: 13px;
-  color: #f1f5f9;
-  backdrop-filter: blur(8px);
-}
-
-.nav-user-chip.doctor {
-  border-color: rgba(96, 165, 250, 0.4);
-  background: rgba(37, 99, 235, 0.12);
-}
-
-.nav-user-chip.doctor i {
-  color: #60a5fa;
-}
-
-.nav-user-chip.patient {
-  border-color: rgba(52, 211, 153, 0.4);
-  background: rgba(16, 185, 129, 0.12);
-}
-
-.nav-user-chip.patient i {
-  color: #34d399;
 }
 
 .nav-logout-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 6px 14px;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  height: clamp(40px, 4.8vw, 46px);
+  padding: 0 clamp(14px, 2vw, 18px);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
-  color: #fca5a5;
+  color: #d0d0d0;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -56,107 +49,132 @@
 }
 
 .nav-logout-btn:hover {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fff;
-  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
 }
 
-/* --- Auth Card / View --- */
+/* =========================================================
+   AUTH VIEW (LOGIN & SIGNUP)
+   ========================================================= */
+
+.auth-view-hero-wrapper {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px 60px;
+  overflow: hidden;
+}
+
 .auth-card-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 60px 20px 80px;
-  min-height: 80vh;
-}
-
-.auth-modal-wrapper {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  z-index: 1000;
-  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
 }
 
 .auth-card {
   position: relative;
   width: 100%;
-  max-width: 460px;
-  background: #11141a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  padding: 36px 32px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(37, 99, 235, 0.08);
-  animation: modalFadeIn 0.25s ease-out;
+  background: rgba(18, 18, 20, 0.88);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 28px;
+  padding: 40px 34px;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: authFadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes modalFadeIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes authFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .auth-close-btn {
   position: absolute;
-  top: 18px;
-  right: 18px;
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 18px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  top: 20px;
+  right: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #a1a1aa;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .auth-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
   color: #fff;
+  transform: scale(1.05);
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 26px;
 }
 
 .auth-icon-badge {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   margin: 0 auto 16px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.1));
-  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: 50%;
+  background: #28282a;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   display: grid;
   place-items: center;
-  font-size: 24px;
-  color: #60a5fa;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.2);
+  font-size: 20px;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .auth-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-family: var(--font-sans);
+  font-size: 23px;
+  font-weight: 600;
   color: #ffffff;
-  margin: 0 0 6px;
-  letter-spacing: -0.3px;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
 }
 
 .auth-subtitle {
   font-size: 13.5px;
-  color: #94a3b8;
+  color: #a1a1aa;
   margin: 0;
+  line-height: 1.5;
 }
 
-/* Role Toggle Tabs */
+/* Role Toggle Tabs - Mirroring .nav-pill */
 .auth-role-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.04);
+  gap: 4px;
+  background: #28282a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
   padding: 4px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .auth-role-tab {
@@ -164,25 +182,27 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: #a1a1aa;
+  font-family: var(--font-sans);
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 
 .auth-role-tab.active {
-  background: #2563eb;
-  color: #ffffff;
-  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .auth-role-tab i {
-  font-size: 15px;
+  font-size: 13.5px;
 }
 
 /* Auth Alerts */
@@ -191,21 +211,21 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 13px;
   line-height: 1.4;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .auth-alert.error {
   background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(239, 68, 68, 0.35);
   color: #fca5a5;
 }
 
 .auth-alert.success {
   background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.35);
   color: #6ee7b7;
 }
 
@@ -213,19 +233,20 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .auth-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
 .auth-field label {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
-  color: #cbd5e1;
+  color: #d4d4d8;
+  letter-spacing: 0.2px;
 }
 
 .auth-input-wrapper {
@@ -236,49 +257,63 @@
 
 .auth-input-wrapper i {
   position: absolute;
-  left: 14px;
-  color: #64748b;
+  left: 16px;
+  color: #71717a;
   font-size: 14px;
   pointer-events: none;
 }
 
 .auth-input-wrapper input {
   width: 100%;
-  padding: 11px 14px 11px 40px;
+  padding: 12px 18px 12px 44px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
   color: #ffffff;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
   outline: none;
   transition: all 0.2s ease;
 }
 
 .auth-input-wrapper input:focus {
-  border-color: #3b82f6;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
 }
 
+.auth-input-wrapper input::placeholder {
+  color: #71717a;
+}
+
+/* Primary Submit Button - Matching .cta-btn */
 .auth-submit-btn {
   margin-top: 6px;
   width: 100%;
-  padding: 12px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #ffffff;
-  font-size: 14.5px;
-  font-weight: 600;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
-  border-radius: 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #000000;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 14.5px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
-  transition: all 0.2s ease;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 22px rgba(255, 255, 255, 0.28);
+  transition: all 0.25s ease;
 }
 
 .auth-submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+  background: #f4f4f5;
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.25),
+    0 0 30px rgba(255, 255, 255, 0.4);
 }
 
 .auth-submit-btn:disabled {
@@ -294,100 +329,107 @@
 
 /* Demo quick fill chips */
 .auth-demo-chips {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
 }
 
 .demo-chips-label {
-  font-size: 11.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #64748b;
+  color: #71717a;
+  text-align: center;
 }
 
 .demo-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 7px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  color: #cbd5e1;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  color: #d4d4d8;
   font-size: 12.5px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .demo-chip:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 .auth-footer-toggle {
   text-align: center;
-  margin-top: 16px;
+  margin-top: 18px;
   font-size: 13px;
-  color: #94a3b8;
+  color: #a1a1aa;
 }
 
 .auth-link-btn {
   background: transparent;
   border: none;
-  color: #60a5fa;
+  color: #ffffff;
   font-weight: 600;
-  padding: 0;
+  padding: 0 4px;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 .auth-link-btn:hover {
-  color: #93c5fd;
+  color: #e4e4e7;
 }
 
-/* --- Doctor Access Gate (Protected Routes) --- */
+/* =========================================================
+   DOCTOR GATE CARD (PROTECTED RECORDING ACCESS)
+   ========================================================= */
+
 .doctor-gate-card {
   max-width: 580px;
   margin: 40px auto;
   text-align: center;
-  background: #11141a;
-  border: 1px solid rgba(96, 165, 250, 0.25);
-  border-radius: 18px;
-  padding: 40px 32px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  background: rgba(20, 20, 22, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  padding: 44px 34px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5);
 }
 
 .gate-icon-badge {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   margin: 0 auto 18px;
   border-radius: 50%;
-  background: rgba(37, 99, 235, 0.15);
-  border: 1px solid rgba(96, 165, 250, 0.4);
+  background: #28282a;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   display: grid;
   place-items: center;
-  font-size: 26px;
-  color: #60a5fa;
+  font-size: 24px;
+  color: #ffffff;
 }
 
 .gate-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff;
+  font-size: 21px;
+  font-weight: 600;
+  color: #ffffff;
   margin: 0 0 10px;
 }
 
 .gate-desc {
   font-size: 14px;
-  color: #94a3b8;
+  color: #a1a1aa;
   line-height: 1.6;
-  margin: 0 0 24px;
+  margin: 0 0 26px;
 }
 
 .gate-actions {
@@ -396,11 +438,20 @@
   gap: 12px;
 }
 
-/* --- Dashboards (Doctor & Patient) --- */
+/* =========================================================
+   DASHBOARDS (DOCTOR & PATIENT)
+   ========================================================= */
+
+.dashboard-page-view {
+  min-height: calc(100vh - 120px);
+  background: #000000;
+  padding-bottom: 80px;
+}
+
 .dashboard-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  padding: 30px 24px 60px;
 }
 
 .dashboard-header {
@@ -408,7 +459,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 34px;
   flex-wrap: wrap;
 }
 
@@ -421,62 +472,59 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.dashboard-role-badge.doctor {
-  background: rgba(37, 99, 235, 0.15);
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  color: #93c5fd;
-}
-
-.dashboard-role-badge.patient {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(52, 211, 153, 0.3);
-  color: #6ee7b7;
+  margin-bottom: 12px;
+  background: #28282a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
 
 .dashboard-title {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 8px;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.03em;
 }
 
 .dashboard-subtitle {
   font-size: 14.5px;
-  color: #94a3b8;
+  color: #a1a1aa;
   margin: 0;
   line-height: 1.5;
 }
 
+/* Prominent Start Consultation Button (White Pill) */
 .btn-start-consultation {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #ffffff;
-  font-size: 14.5px;
+  padding: 13px 26px;
+  background: #ffffff;
+  color: #000000;
+  font-family: var(--font-sans);
+  font-size: 14px;
   font-weight: 600;
   border: none;
-  border-radius: 12px;
+  border-radius: 999px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
-  transition: all 0.2s ease;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 22px rgba(255, 255, 255, 0.25);
+  transition: all 0.25s ease;
 }
 
 .btn-start-consultation:hover {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: #f4f4f5;
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 0 32px rgba(255, 255, 255, 0.4);
 }
 
 /* Patient Portal Notice */
@@ -484,29 +532,29 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 20px;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(52, 211, 153, 0.2);
-  border-radius: 14px;
-  margin-bottom: 28px;
+  padding: 16px 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  margin-bottom: 30px;
 }
 
 .patient-portal-notice i {
   font-size: 22px;
-  color: #34d399;
+  color: #ffffff;
 }
 
 .patient-portal-notice strong {
   display: block;
   font-size: 14px;
-  color: #f1f5f9;
+  color: #ffffff;
   margin-bottom: 2px;
 }
 
 .patient-portal-notice p {
   margin: 0;
   font-size: 13px;
-  color: #94a3b8;
+  color: #a1a1aa;
 }
 
 /* Dashboard Metrics */
@@ -522,37 +570,22 @@
   align-items: center;
   gap: 16px;
   padding: 20px 22px;
-  background: #11141a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  background: rgba(18, 18, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
 }
 
 .metric-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #28282a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   display: grid;
   place-items: center;
-  font-size: 20px;
-}
-
-.metric-icon.blue {
-  background: rgba(37, 99, 235, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(96, 165, 250, 0.25);
-}
-
-.metric-icon.emerald {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.25);
-}
-
-.metric-icon.purple {
-  background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
-  border: 1px solid rgba(192, 132, 252, 0.25);
+  font-size: 18px;
 }
 
 .metric-info {
@@ -567,17 +600,18 @@
 }
 
 .metric-label {
-  font-size: 12.5px;
-  color: #94a3b8;
+  font-size: 12px;
+  color: #a1a1aa;
 }
 
 /* Consultations Table Card */
 .dashboard-table-card {
-  background: #11141a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
+  background: rgba(18, 18, 20, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
 .dashboard-table-header {
@@ -604,51 +638,51 @@
 }
 
 .table-counter-badge {
-  font-size: 12px;
-  padding: 2px 10px;
+  font-size: 11.5px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d4d4d8;
 }
 
 .dashboard-search-box {
   position: relative;
   display: flex;
   align-items: center;
-  min-width: 260px;
+  min-width: 270px;
 }
 
 .dashboard-search-box i {
   position: absolute;
-  left: 12px;
-  color: #64748b;
+  left: 14px;
+  color: #71717a;
   font-size: 13px;
 }
 
 .dashboard-search-box input {
   width: 100%;
-  padding: 8px 30px 8px 34px;
+  padding: 9px 30px 9px 36px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
   color: #ffffff;
   font-size: 13px;
   outline: none;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .dashboard-search-box input:focus {
-  border-color: #3b82f6;
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .search-clear-btn {
   position: absolute;
-  right: 10px;
+  right: 12px;
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: #a1a1aa;
   font-size: 12px;
   cursor: pointer;
 }
@@ -671,7 +705,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: #64748b;
+  color: #71717a;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -682,7 +716,7 @@
 }
 
 .consultation-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .consultations-table td {
@@ -700,45 +734,38 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(37, 99, 235, 0.15);
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  color: #60a5fa;
+  background: #28282a;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
   display: grid;
   place-items: center;
-  font-size: 14px;
+  font-size: 13px;
   flex-shrink: 0;
-}
-
-.doctor-avatar-mini {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(52, 211, 153, 0.3);
-  color: #34d399;
 }
 
 .patient-name-text {
   display: block;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #ffffff;
 }
 
 .consultation-id-sub {
   font-size: 11.5px;
-  color: #64748b;
-  font-family: monospace;
+  color: #71717a;
 }
 
 .date-cell {
-  color: #cbd5e1;
+  color: #d4d4d8;
   white-space: nowrap;
 }
 
 .date-cell i {
-  color: #64748b;
+  color: #71717a;
   margin-right: 6px;
 }
 
 .complaint-cell {
-  max-width: 260px;
+  max-width: 280px;
 }
 
 .complaint-text {
@@ -746,7 +773,7 @@
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  color: #94a3b8;
+  color: #a1a1aa;
 }
 
 .turns-cell {
@@ -757,16 +784,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 12px;
-  color: #cbd5e1;
-}
-
-.turns-pill i {
-  color: #60a5fa;
+  color: #d4d4d8;
 }
 
 .status-cell {
@@ -777,15 +800,15 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
 }
 
 .status-tag.finalized {
   background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(52, 211, 153, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.3);
   color: #6ee7b7;
 }
 
@@ -805,22 +828,23 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 14px;
-  background: rgba(37, 99, 235, 0.12);
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  border-radius: 8px;
-  color: #93c5fd;
+  padding: 7px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  color: #ffffff;
+  font-family: var(--font-sans);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .btn-view-record:hover {
-  background: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
-  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  transform: translateY(-1px);
 }
 
 /* Empty & Loading States */
@@ -832,21 +856,22 @@
 }
 
 .empty-icon-wrap {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
+  background: #28282a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   display: grid;
   place-items: center;
-  font-size: 26px;
-  color: #64748b;
+  font-size: 22px;
+  color: #a1a1aa;
 }
 
 .dashboard-empty-state h4 {
   font-size: 18px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #ffffff;
   margin: 0 0 8px;
 }
 
@@ -854,33 +879,38 @@
 .dashboard-loading-state p,
 .dashboard-error-state p {
   font-size: 14px;
-  color: #94a3b8;
+  color: #a1a1aa;
   max-width: 440px;
   margin: 0 auto 20px;
   line-height: 1.5;
 }
 
-.empty-cta {
-  margin: 0 auto;
-}
-
 .dashboard-loading-state .spinner {
-  font-size: 28px;
-  color: #3b82f6;
+  font-size: 26px;
+  color: #ffffff;
   margin-bottom: 14px;
 }
 
 .dashboard-error-state i {
-  font-size: 28px;
+  font-size: 26px;
   color: #ef4444;
   margin-bottom: 14px;
 }
 
-/* --- Consultation Detail View --- */
+/* =========================================================
+   CONSULTATION DETAIL VIEW
+   ========================================================= */
+
+.detail-page-view {
+  min-height: calc(100vh - 120px);
+  background: #000000;
+  padding-bottom: 80px;
+}
+
 .detail-view-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 30px 24px 80px;
+  padding: 24px 24px 60px;
 }
 
 .detail-nav-bar {
@@ -896,20 +926,20 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  color: #cbd5e1;
-  font-size: 13.5px;
+  padding: 8px 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .btn-back:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
 }
 
 .detail-status-pill {
@@ -918,18 +948,11 @@
   gap: 8px;
   padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(52, 211, 153, 0.25);
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
   color: #6ee7b7;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
-}
-
-.detail-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #10b981;
 }
 
 .detail-header-card {
@@ -938,11 +961,12 @@
   justify-content: space-between;
   gap: 20px;
   padding: 26px 28px;
-  background: #11141a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
+  background: rgba(18, 18, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
   margin-bottom: 28px;
   flex-wrap: wrap;
+  backdrop-filter: blur(16px);
 }
 
 .detail-header-main {
@@ -952,15 +976,15 @@
 }
 
 .detail-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: rgba(37, 99, 235, 0.15);
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  color: #60a5fa;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #28282a;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
   display: grid;
   place-items: center;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .detail-patient-name {
@@ -968,6 +992,7 @@
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 6px;
+  letter-spacing: -0.02em;
 }
 
 .detail-meta-row {
@@ -979,14 +1004,10 @@
 
 .detail-meta-item {
   font-size: 13px;
-  color: #94a3b8;
+  color: #a1a1aa;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.detail-meta-item i {
-  color: #64748b;
 }
 
 .detail-header-actions {
@@ -1010,11 +1031,12 @@
 }
 
 .detail-panel {
-  background: #11141a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
+  background: rgba(18, 18, 20, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
   padding: 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
 }
 
 .detail-panel-head {
@@ -1036,7 +1058,7 @@
 .panel-title-group h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: #ffffff;
   margin: 0;
 }
 
@@ -1045,10 +1067,10 @@
   align-items: center;
   gap: 5px;
   font-size: 11.5px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #94a3b8;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d4d4d8;
 }
 
 .detail-dialogue-content {
@@ -1060,14 +1082,14 @@
 .detail-raw-text {
   font-size: 14px;
   line-height: 1.6;
-  color: #cbd5e1;
+  color: #d4d4d8;
   white-space: pre-wrap;
 }
 
 .dialogue-raw-view pre {
   font-family: inherit;
   font-size: 13.5px;
-  color: #cbd5e1;
+  color: #d4d4d8;
   white-space: pre-wrap;
   margin: 0;
   line-height: 1.6;
@@ -1083,13 +1105,13 @@
 .note-card-section {
   padding: 16px 18px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
 }
 
 .note-card-section.plan-highlight {
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(96, 165, 250, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .note-section-title {
@@ -1101,21 +1123,21 @@
 
 .note-section-title i {
   font-size: 13px;
-  color: #60a5fa;
+  color: #ffffff;
 }
 
 .note-section-title h4 {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: #94a3b8;
+  letter-spacing: 0.4px;
+  color: #a1a1aa;
   margin: 0;
 }
 
 .note-section-body {
   font-size: 14px;
-  color: #f1f5f9;
+  color: #ffffff;
   line-height: 1.6;
   margin: 0;
   white-space: pre-wrap;
@@ -1131,20 +1153,20 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
-  background: rgba(37, 99, 235, 0.12);
-  border: 1px solid rgba(96, 165, 250, 0.25);
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   font-size: 12.5px;
-  color: #bfdbfe;
+  color: #ffffff;
 }
 
 .translated-plan-box {
   margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
   background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(52, 211, 153, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .translated-plan-head {
@@ -1159,7 +1181,7 @@
 
 .translated-plan-body {
   font-size: 13.5px;
-  color: #e2e8f0;
+  color: #ffffff;
   line-height: 1.5;
   margin: 0;
 }
@@ -1168,21 +1190,22 @@
 .detail-error-box {
   text-align: center;
   padding: 80px 20px;
-  background: #11141a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+  background: rgba(18, 18, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
   max-width: 500px;
   margin: 60px auto;
+  backdrop-filter: blur(20px);
 }
 
 .detail-spinner {
-  font-size: 32px;
-  color: #3b82f6;
+  font-size: 30px;
+  color: #ffffff;
   margin-bottom: 16px;
 }
 
 .detail-error-box i {
-  font-size: 32px;
+  font-size: 30px;
   color: #ef4444;
   margin-bottom: 16px;
 }
@@ -1195,7 +1218,7 @@
 
 .detail-error-box p {
   font-size: 14px;
-  color: #94a3b8;
+  color: #a1a1aa;
   margin: 0 0 20px;
 }
 
@@ -1218,31 +1241,28 @@
 
 .patient-name-field-wrap label {
   font-size: 13px;
-  font-weight: 600;
-  color: #cbd5e1;
+  font-weight: 500;
+  color: #d4d4d8;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
 }
 
-.patient-name-field-wrap label i {
-  color: #60a5fa;
-}
-
 .patient-name-input {
   flex: 1;
-  padding: 10px 14px;
+  padding: 10px 18px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
   color: #ffffff;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
   outline: none;
 }
 
 .patient-name-input:focus {
-  border-color: #3b82f6;
+  border-color: rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.09);
 }
 
@@ -1252,17 +1272,17 @@
   gap: 12px;
   flex-wrap: wrap;
   width: 100%;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .saved-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(52, 211, 153, 0.3);
-  border-radius: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 999px;
   color: #6ee7b7;
   font-size: 13px;
   font-weight: 500;
@@ -1272,11 +1292,12 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: #2563eb;
+  padding: 8px 18px;
+  background: #ffffff;
   border: none;
-  border-radius: 8px;
-  color: #ffffff;
+  border-radius: 999px;
+  color: #000000;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1284,15 +1305,15 @@
 }
 
 .btn-dashboard-jump:hover {
-  background: #3b82f6;
+  background: #f4f4f5;
   transform: translateY(-1px);
 }
 
 .save-error-badge {
-  padding: 8px 12px;
+  padding: 8px 14px;
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
+  border-radius: 999px;
   color: #fca5a5;
   font-size: 13px;
   width: 100%;

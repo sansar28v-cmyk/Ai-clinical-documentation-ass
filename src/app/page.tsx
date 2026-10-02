@@ -171,12 +171,24 @@ export default function HomePage() {
 
       {/* ---------------- Main Routed View ---------------- */}
       {currentView === "login" && (
-        <main className="auth-view-page" style={{ paddingTop: "60px" }}>
-          <AuthView
-            initialRole={authInitialRole}
-            onSuccess={handleLoginSuccess}
-          />
-        </main>
+        <section className="hero-viewport" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="bg">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video className="bg-video" autoPlay muted loop playsInline>
+              <source
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260809_012548_ef22562c-c0ae-4816-ad9d-f8922af4e6a7.mp4"
+                type="video/mp4"
+              />
+            </video>
+          </div>
+          <div style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: "480px", padding: "20px", margin: "auto" }}>
+            <AuthView
+              initialRole={authInitialRole}
+              onClose={() => setCurrentView("landing")}
+              onSuccess={handleLoginSuccess}
+            />
+          </div>
+        </section>
       )}
 
       {currentView === "doctor-dashboard" && (
