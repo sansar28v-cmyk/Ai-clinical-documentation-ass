@@ -3,12 +3,10 @@
  */
 
 const getBaseUrl = (): string => {
-  if (typeof window !== "undefined") {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    return `${protocol}//${hostname}:8000`;
+  if (process.env.NEXT_PUBLIC_BACKEND_URL) {
+    return process.env.NEXT_PUBLIC_BACKEND_URL;
   }
-  return process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+  return "";
 };
 
 export interface User {

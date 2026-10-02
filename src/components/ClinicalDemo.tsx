@@ -142,7 +142,7 @@ export default function ClinicalDemo({
     // Hidden developer/eval helper for browser console testing: window.__testRedFlag("chest pain shortness of breath")
     (window as unknown as { __testRedFlag?: (text: string) => void }).__testRedFlag = async (testText: string) => {
       try {
-        const res = await fetch("http://localhost:8000/api/check-red-flags", {
+        const res = await fetch("/api/check-red-flags", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: testText }),
@@ -197,7 +197,11 @@ export default function ClinicalDemo({
       streamRef.current = stream;
 
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/transcribe`;
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const defaultWsUrl = isLocal
+        ? `${wsProtocol}//${window.location.hostname}:8000/ws/transcribe`
+        : `${wsProtocol}//${window.location.host}/ws/transcribe`;
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || defaultWsUrl;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -273,9 +277,16 @@ export default function ClinicalDemo({
       };
 
       ws.onerror = () => {
-        setError(
-          "Could not connect to live streaming WebSocket (ws://localhost:8000/ws/transcribe). Make sure python server.py is running.",
-        );
+        const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        if (isLocalHost) {
+          setError(
+            "Could not connect to live streaming WebSocket (ws://localhost:8000/ws/transcribe). Make sure python server.py is running."
+          );
+        } else {
+          setError(
+            "Live microphone streaming requires a persistent WebSocket server (server.py). On Vercel, please switch to the 'Upload Audio File' tab for 100% cloud-hosted transcription, note extraction, and diarization!"
+          );
+        }
         cleanupAudio();
       };
 
