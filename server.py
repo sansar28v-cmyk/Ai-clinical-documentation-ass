@@ -243,8 +243,12 @@ async def label_speakers(transcript: str) -> list[dict]:
 class LabelSpeakersRequest(BaseModel):
     transcript: str
 
+from auth_and_db import init_db
+from auth_routes import router as auth_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     if not SARVAM_API_KEY:
         logger.warning("SARVAM_API_KEY is not set! Real-time streaming will fail without a valid key.")
     else:
@@ -261,6 +265,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Auth & Consultation Routes (both root and /api prefixed for convenience)
+app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api")
 
 @app.get("/health")
 async def health():

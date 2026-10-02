@@ -9,6 +9,8 @@ export const metadata: Metadata = {
     "Upload a doctor-patient consultation recording and let AI transcribe it, extract a structured clinical note, and hand it back for your review in minutes.",
 };
 
+import { Providers } from "@/components/Providers";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
@@ -38,9 +40,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
         {/* Static page styles */}
         <link rel="stylesheet" href="/styles.css" />
+        <link rel="stylesheet" href="/auth_dashboard.css" />
       </head>
       <body>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
         {/* beforeInteractive loads this self-hosted script before any app code,
             guaranteeing the mobile menu + stats count-up work on first paint. */}
         <Script src="/main.js" strategy="beforeInteractive" />

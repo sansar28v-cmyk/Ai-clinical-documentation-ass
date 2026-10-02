@@ -8,6 +8,8 @@ import {
 } from "@/lib/clinical-note";
 import { downloadNoteAsPdf, downloadNoteAsText } from "@/lib/export";
 import { SpeakerTurn } from "@/lib/mock";
+import { useAuth } from "@/context/AuthContext";
+import { apiRequest } from "@/lib/api";
 
 type Stage = "idle" | "ready" | "processing" | "review" | "finalized";
 
@@ -21,8 +23,21 @@ const PROCESSING_STEPS = [
 
 type InputMode = "live" | "upload";
 
-export default function ClinicalDemo() {
+interface ClinicalDemoProps {
+  onRequestLogin?: (role: "doctor" | "patient") => void;
+  onNavigateToDashboard?: () => void;
+}
+
+export default function ClinicalDemo({
+  onRequestLogin,
+  onNavigateToDashboard,
+}: ClinicalDemoProps) {
+  const { token, user, role } = useAuth();
   const [stage, setStage] = useState<Stage>("idle");
+  const [patientName, setPatientName] = useState("Anita Roy");
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedId, setSavedId] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>("live");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -267,6 +282,33 @@ export default function ClinicalDemo() {
     setMockMode(false);
     setStage("idle");
     setShowTranscript(false);
+    setSavedId(null);
+    setSaveError(null);
+  }
+
+  async function handleFinalize() {
+    setStage("finalized");
+    if (token && role === "doctor") {
+      setIsSaving(true);
+      setSaveError(null);
+      try {
+        const res = await apiRequest<{ id: number }>("/consultations", {
+          method: "POST",
+          token,
+          body: {
+            patient_name: patientName.trim() || "Consultation Patient",
+            transcript,
+            speaker_turns: turns,
+            note,
+          },
+        });
+        setSavedId(res.id);
+      } catch (err: any) {
+        setSaveError(err.message || "Failed to save consultation to database.");
+      } finally {
+        setIsSaving(false);
+      }
+    }
   }
 
   async function handleProcess() {
@@ -323,8 +365,29 @@ export default function ClinicalDemo() {
           </div>
         )}
 
-        {(stage === "idle" || stage === "ready") && (
-          <div className="demo-upload">
+        {!token || role !== "doctor" ? (
+          <div className="doctor-gate-card">
+            <div className="gate-icon-badge">
+              <i className="fa-solid fa-user-doctor" />
+            </div>
+            <h3 className="gate-title">Doctor Portal Access Required</h3>
+            <p className="gate-desc">
+              Live consultation recording, speaker-labeled transcription, and structured clinical note generation are restricted to authenticated physicians.
+            </p>
+            <div className="gate-actions">
+              <button
+                type="button"
+                onClick={() => (onRequestLogin ? onRequestLogin("doctor") : null)}
+                className="btn-start-consultation"
+              >
+                <i className="fa-solid fa-arrow-right-to-bracket" /> Sign In as Doctor
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {(stage === "idle" || stage === "ready") && (
+              <div className="demo-upload">
             {/* Mode selection tabs */}
             <div className="demo-mode-tabs">
               <button
@@ -721,11 +784,47 @@ export default function ClinicalDemo() {
 
             <div className="review-actions">
               {stage === "review" ? (
-                <button onClick={() => setStage("finalized")} className="btn-finalize">
-                  Finalize Note
-                </button>
+                <div className="finalize-controls-group">
+                  <div className="patient-name-field-wrap">
+                    <label htmlFor="patient-name-input">
+                      <i className="fa-solid fa-hospital-user" /> Patient Name for Clinical Record:
+                    </label>
+                    <input
+                      id="patient-name-input"
+                      type="text"
+                      value={patientName}
+                      onChange={(e) => setPatientName(e.target.value)}
+                      placeholder="e.g. Anita Roy"
+                      className="patient-name-input"
+                    />
+                  </div>
+                  <button onClick={handleFinalize} className="btn-finalize" disabled={isSaving}>
+                    {isSaving ? "Saving to Database..." : "Finalize & Save Note"}
+                  </button>
+                </div>
               ) : (
                 <div className="export-actions">
+                  {savedId && (
+                    <div className="saved-badge-wrap">
+                      <span className="saved-badge">
+                        <i className="fa-solid fa-circle-check" /> Consultation saved to records as <strong>Record #{savedId}</strong>
+                      </span>
+                      {onNavigateToDashboard && (
+                        <button
+                          type="button"
+                          onClick={onNavigateToDashboard}
+                          className="btn-dashboard-jump"
+                        >
+                          <i className="fa-solid fa-table-columns" /> View in Doctor Dashboard
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {saveError && (
+                    <div className="save-error-badge">
+                      <i className="fa-solid fa-triangle-exclamation" /> {saveError}
+                    </div>
+                  )}
                   <button onClick={() => downloadNoteAsText(note)} className="btn-ghost">
                     Download as Text
                   </button>
@@ -739,6 +838,8 @@ export default function ClinicalDemo() {
               )}
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 

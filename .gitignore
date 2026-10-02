@@ -24,7 +24,10 @@ Thumbs.db
 # TypeScript build info
 *.tsbuildinfo
 
-# Python
+# Python & SQLite
 __pycache__/
 *.py[cod]
 *$py.class
+*.db
+*.sqlite3
+
