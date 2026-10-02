@@ -4,6 +4,7 @@ import { transcribeAudio } from "@/lib/sarvam-stt";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 // Convenience endpoint used by the frontend: chains transcribe + extract into
 // a single request so the UI only has to track one network call per upload.

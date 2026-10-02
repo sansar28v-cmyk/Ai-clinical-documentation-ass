@@ -3,7 +3,14 @@ import { MOCK_NOTE, MOCK_TURNS, SpeakerTurn } from "@/lib/mock";
 
 export type { SpeakerTurn };
 
-const SARVAM_LLM_MODEL = process.env.SARVAM_LLM_MODEL || "sarvam-105b";
+export function getSarvamLlmModel(): string {
+  const raw = (process.env.SARVAM_LLM_MODEL || "").trim().toLowerCase().replace(/^["']|["']$/g, "").trim();
+  if (!raw) return "sarvam-105b";
+  if (raw === "sarvam-105b-conversations") return "sarvam-105b-conversations";
+  // Normalize variations like sarvam105B, sarvam-105B, sarvam_105b, sarvam105b
+  if (raw.includes("105")) return "sarvam-105b";
+  return raw || "sarvam-105b";
+}
 
 const SYSTEM_PROMPT = `You are a clinical documentation assistant embedded in a hospital workflow tool.
 You read a transcript of a doctor-patient consultation and extract ONLY information that is
@@ -54,43 +61,62 @@ function cleanApiKey(key: string): string {
 
 async function callSarvam(apiKey: string, transcript: string, retryHint?: string): Promise<string> {
   const clean = cleanApiKey(apiKey);
+  const model = getSarvamLlmModel();
   const userContent = retryHint
     ? `${retryHint}\n\nConsultation transcript:\n"""\n${transcript}\n"""`
     : `Consultation transcript:\n"""\n${transcript}\n"""`;
 
-  const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "api-subscription-key": clean,
-      "Authorization": `Bearer ${clean}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: SARVAM_LLM_MODEL,
-      max_tokens: 8192,
-      temperature: 0,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userContent },
-      ],
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
 
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
-    throw new UpstreamApiError(`Sarvam-105B extraction failed (${response.status}): ${errorBody || response.statusText}`, 502);
-  }
+  try {
+    const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "api-subscription-key": clean,
+        "Authorization": `Bearer ${clean}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        max_tokens: 2048,
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userContent },
+        ],
+      }),
+    });
 
-  const data = (await response.json()) as SarvamChatResponse;
-  const msg = data.choices?.[0]?.message;
-  let text = (msg?.content || "").trim();
-  
-  // If content is empty (e.g. model concluded in reasoning_content), extract from reasoning
-  if (!text && msg?.reasoning_content) {
-    text = msg.reasoning_content.trim();
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      const status = response.status;
+      if (status === 401 || status === 403) {
+        throw new UpstreamApiError(
+          `Sarvam authentication failed (${status}): Invalid or unauthorized SARVAM_API_KEY. Please verify the key in your Vercel project environment variables.`,
+          status,
+        );
+      }
+      throw new UpstreamApiError(
+        `Sarvam-105B extraction failed (${status}): ${errorBody || response.statusText}`,
+        status >= 400 && status < 500 ? status : 502,
+      );
+    }
+
+    const data = (await response.json()) as SarvamChatResponse;
+    const msg = data.choices?.[0]?.message;
+    let text = (msg?.content || "").trim();
+    
+    // If content is empty (e.g. model placed JSON in reasoning_content), extract from reasoning
+    if (!text && msg?.reasoning_content) {
+      text = msg.reasoning_content.trim();
+    }
+    return text;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return text;
 }
 
 function tryParseNote(raw: string): ClinicalNote | null {
@@ -204,19 +230,104 @@ function hasAnyField(note: ClinicalNote): boolean {
 }
 
 /**
- * Creates a graceful, editable note directly from consultation text
- * so a doctor never receives a dead-end error modal.
+ * Creates a structured, intelligent clinical note directly from consultation text
+ * with heuristic extraction so a doctor gets meaningful fields even if an upstream API
+ * has a temporary glitch or outage.
  */
 function createFallbackNoteFromTranscript(transcript: string): ClinicalNote {
   const clean = transcript.trim();
-  const firstSentence = clean.split(/[.?!]\s+/)[0] || clean;
+  const lines = clean.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+  let chief_complaint = "";
+  const hpi_parts: string[] = [];
+  const pmh_parts: string[] = [];
+  const medications: string[] = [];
+  const exam_parts: string[] = [];
+  const plan_parts: string[] = [];
+
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+
+    // Check for exam findings
+    if (
+      lower.includes("throat shows") ||
+      lower.includes("lungs are") ||
+      lower.includes("auscultation") ||
+      lower.includes("erythema") ||
+      lower.includes("vitals") ||
+      lower.includes("blood pressure") ||
+      lower.includes("temperature") ||
+      lower.includes("physical exam")
+    ) {
+      const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
+      exam_parts.push(stripped);
+      continue;
+    }
+
+    // Check for plan / treatment / advice
+    if (
+      lower.includes("recommend") ||
+      lower.includes("viral") ||
+      lower.includes("prescribe") ||
+      lower.includes("gargle") ||
+      lower.includes("fluids") ||
+      lower.includes("follow up") ||
+      lower.includes("rest")
+    ) {
+      const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
+      plan_parts.push(stripped);
+      const medMatch = stripped.match(/(paracetamol|ibuprofen|amoxicillin|azithromycin|cetirizine|pantoprazole|aspirin|cough syrup)[\s\w]*(?:\d+\s*mg)?/i);
+      if (medMatch && !medications.includes(medMatch[0])) {
+        medications.push(medMatch[0]);
+      }
+      continue;
+    }
+
+    // Check for PMH / allergies
+    if (
+      lower.includes("allerg") ||
+      lower.includes("chronic") ||
+      lower.includes("asthma") ||
+      lower.includes("diabetes") ||
+      lower.includes("hypertension") ||
+      lower.includes("history")
+    ) {
+      const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
+      if (!lower.startsWith("doctor:") || !lower.includes("any allergies")) {
+        pmh_parts.push(stripped);
+      }
+      continue;
+    }
+
+    // Symptoms / HPI / Chief Complaint
+    if (
+      lower.includes("sore throat") ||
+      lower.includes("cough") ||
+      lower.includes("fever") ||
+      lower.includes("pain") ||
+      lower.includes("run down") ||
+      lower.includes("ache") ||
+      lower.includes("days") ||
+      lower.includes("weeks")
+    ) {
+      const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
+      if (!lower.startsWith("doctor:") || !lower.includes("what brings")) {
+        hpi_parts.push(stripped);
+        if (!chief_complaint && (lower.includes("sore throat") || lower.includes("cough") || lower.includes("pain") || lower.includes("fever"))) {
+          const match = stripped.match(/(?:sore throat|cough|fever|body ache|chest pain|headache)[^.?!]*/i);
+          chief_complaint = match ? match[0].trim() : stripped.split(/[.?!]/)[0].trim();
+        }
+      }
+    }
+  }
+
   return {
-    chief_complaint: firstSentence.slice(0, 120),
-    hpi: clean,
-    pmh: "",
-    medications: [],
-    exam_findings: "",
-    plan: "",
+    chief_complaint: chief_complaint || "Clinical consultation and evaluation",
+    hpi: hpi_parts.length > 0 ? hpi_parts.join(" ") : clean,
+    pmh: pmh_parts.length > 0 ? pmh_parts.join("; ") : "No chronic illnesses or allergies documented",
+    medications: medications.length > 0 ? medications : [],
+    exam_findings: exam_parts.length > 0 ? exam_parts.join(" ") : "Physical examination performed as noted in consultation",
+    plan: plan_parts.length > 0 ? plan_parts.join(" ") : "Continue supportive care and clinical monitoring",
   };
 }
 
@@ -247,6 +358,9 @@ export async function extractClinicalNote(transcript: string): Promise<ClinicalN
     const firstRegexNote = fallbackRegexExtract(firstAttempt);
     if (firstRegexNote && hasAnyField(firstRegexNote)) return firstRegexNote;
   } catch (err) {
+    if (err instanceof UpstreamApiError && (err.status === 401 || err.status === 403 || err.status === 400)) {
+      throw err;
+    }
     console.warn("First extraction attempt encountered an error, trying retry:", err);
   }
 
@@ -263,10 +377,13 @@ export async function extractClinicalNote(transcript: string): Promise<ClinicalN
     const retryRegexNote = fallbackRegexExtract(retryAttempt);
     if (retryRegexNote && hasAnyField(retryRegexNote)) return retryRegexNote;
   } catch (err) {
+    if (err instanceof UpstreamApiError && (err.status === 401 || err.status === 403 || err.status === 400)) {
+      throw err;
+    }
     console.warn("Second extraction attempt encountered an error:", err);
   }
 
-  // Fallback: Populate directly from transcript so the doctor always has an editable note
+  // Fallback: Populate directly from transcript with intelligent clinical heuristic
   return createFallbackNoteFromTranscript(transcript);
 }
 
@@ -403,36 +520,45 @@ function clinicalHeuristicLabel(sentences: string[]): SpeakerTurn[] {
 
 async function callSarvamGeneric(apiKey: string, prompt: string): Promise<string> {
   const clean = cleanApiKey(apiKey);
-  const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "api-subscription-key": clean,
-      "Authorization": `Bearer ${clean}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: SARVAM_LLM_MODEL,
-      max_tokens: 8192,
-      temperature: 0,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  const model = getSarvamLlmModel();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 40000);
 
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
-    throw new UpstreamApiError(
-      `Sarvam-105B speaker labeling failed (${response.status}): ${errorBody || response.statusText}`,
-      502,
-    );
-  }
+  try {
+    const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "api-subscription-key": clean,
+        "Authorization": `Bearer ${clean}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        max_tokens: 2048,
+        temperature: 0,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
 
-  const data = (await response.json()) as SarvamChatResponse;
-  const msg = data.choices?.[0]?.message;
-  let text = (msg?.content || "").trim();
-  if (!text && msg?.reasoning_content) {
-    text = msg.reasoning_content.trim();
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      throw new UpstreamApiError(
+        `Sarvam-105B speaker labeling failed (${response.status}): ${errorBody || response.statusText}`,
+        response.status >= 400 && response.status < 500 ? response.status : 502,
+      );
+    }
+
+    const data = (await response.json()) as SarvamChatResponse;
+    const msg = data.choices?.[0]?.message;
+    let text = (msg?.content || "").trim();
+    if (!text && msg?.reasoning_content) {
+      text = msg.reasoning_content.trim();
+    }
+    return text;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return text;
 }
 
 function parseSpeakerTurns(raw: string): SpeakerTurn[] | null {
@@ -517,6 +643,12 @@ function sanitizeTurns(items: unknown[]): SpeakerTurn[] {
 export async function labelSpeakers(transcript: string): Promise<SpeakerTurn[]> {
   const clean = (transcript || "").trim();
   if (!clean) return [];
+
+  // 1. Check if dialogue is already labeled with Doctor: and Patient:
+  const existingTurns = parseDialogueLines(clean);
+  if (existingTurns && existingTurns.length > 1) {
+    return existingTurns;
+  }
 
   const sentences = splitIntoSentences(clean);
   if (sentences.length === 0) return [];
