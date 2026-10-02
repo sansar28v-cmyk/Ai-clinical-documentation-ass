@@ -7,6 +7,7 @@ import {
   EMPTY_CLINICAL_NOTE,
 } from "@/lib/clinical-note";
 import { downloadNoteAsPdf, downloadNoteAsText } from "@/lib/export";
+import { SpeakerTurn } from "@/lib/mock";
 
 type Stage = "idle" | "ready" | "processing" | "review" | "finalized";
 
@@ -15,7 +16,7 @@ const ACCEPTED = ".wav,.mp3,.m4a,.mp4,.mpeg,.mpga,.webm,.ogg";
 const PROCESSING_STEPS = [
   { title: "Uploading audio", detail: "Sent in memory only — nothing is written to disk." },
   { title: "Transcribing with Sarvam AI", detail: "Converting the consultation to text (auto-detects Indian languages)." },
-  { title: "Extracting the clinical note with Sarvam-105B", detail: "Structuring chief complaint, HPI, meds, plan and more." },
+  { title: "Extracting note & labeling speakers with Sarvam-105B", detail: "Structuring clinical fields and inferring Doctor vs Patient turns." },
 ];
 
 type InputMode = "live" | "upload";
@@ -26,6 +27,9 @@ export default function ClinicalDemo() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [turns, setTurns] = useState<SpeakerTurn[]>([]);
+  const [dialogueView, setDialogueView] = useState<"turns" | "raw">("turns");
+  const [showDialogue, setShowDialogue] = useState(true);
   const [note, setNote] = useState<ClinicalNote>(EMPTY_CLINICAL_NOTE);
   const [error, setError] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -233,6 +237,7 @@ export default function ClinicalDemo() {
         throw new Error(data?.error || "Failed to extract clinical note.");
       }
       setNote({ ...EMPTY_CLINICAL_NOTE, ...data.note });
+      setTurns(Array.isArray(data.turns) ? data.turns : []);
       setMockMode(Boolean(data.mock));
       setStage("review");
     } catch (err) {
@@ -252,6 +257,7 @@ export default function ClinicalDemo() {
     cleanupAudio();
     setFile(null);
     setTranscript("");
+    setTurns([]);
     setLiveSegments([]);
     setLivePartial("");
     setDetectedLang(null);
@@ -277,6 +283,7 @@ export default function ClinicalDemo() {
       }
       setTranscript(data.transcript ?? "");
       setNote({ ...EMPTY_CLINICAL_NOTE, ...data.note });
+      setTurns(Array.isArray(data.turns) ? data.turns : []);
       setMockMode(Boolean(data.mock));
       setStage("review");
     } catch (err) {
@@ -540,12 +547,107 @@ export default function ClinicalDemo() {
               )}
             </div>
 
-            <div className="transcript-toggle">
-              <button onClick={() => setShowTranscript((v) => !v)} className="transcript-toggle-btn">
-                <span>View raw transcript</span>
-                <span>{showTranscript ? "▲" : "▼"}</span>
-              </button>
-              {showTranscript && <div className="transcript-body">{transcript || "No transcript available."}</div>}
+            {/* ---------------- Conversation View (Speaker Diarization) ---------------- */}
+            <div className="conversation-panel">
+              <div className="conversation-panel-head">
+                <div className="conversation-head-left">
+                  <span className="conversation-panel-title">
+                    <i className="fa-solid fa-comments" aria-hidden="true" />
+                    Consultation Dialogue
+                  </span>
+                  <div
+                    className="ai-inferred-badge"
+                    title="Speaker roles are inferred by Sarvam-105B based on conversational patterns (questions/instructions = Doctor, symptoms/answers = Patient). Not an acoustic hardware diarization."
+                  >
+                    <span className="badge-pulse-dot" />
+                    <span>AI-inferred speaker labels</span>
+                    <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                  </div>
+                </div>
+
+                <div className="conversation-head-right">
+                  <div className="conversation-view-tabs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={dialogueView === "turns"}
+                      className={`conv-tab ${dialogueView === "turns" ? "active" : ""}`}
+                      onClick={() => setDialogueView("turns")}
+                    >
+                      Speaker Turns {turns.length > 0 && `(${turns.length})`}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={dialogueView === "raw"}
+                      className={`conv-tab ${dialogueView === "raw" ? "active" : ""}`}
+                      onClick={() => setDialogueView("raw")}
+                    >
+                      Raw Transcript
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDialogue((v) => !v)}
+                    className="conv-collapse-btn"
+                    title={showDialogue ? "Collapse dialogue" : "Expand dialogue"}
+                  >
+                    <span>{showDialogue ? "Hide" : "Show"}</span>
+                    <span>{showDialogue ? "▲" : "▼"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {showDialogue && (
+                <div className="conversation-panel-body">
+                  {dialogueView === "turns" ? (
+                    <div className="turns-chat-stream">
+                      {turns.length > 0 ? (
+                        turns.map((turn, idx) => {
+                          const isDoctor = turn.speaker === "Doctor";
+                          const isPatient = turn.speaker === "Patient";
+                          const speakerRole = isDoctor ? "doctor" : isPatient ? "patient" : "unknown";
+
+                          return (
+                            <div key={idx} className={`turn-bubble-wrapper turn-${speakerRole}`}>
+                              <div className="turn-avatar">
+                                <i
+                                  className={
+                                    isDoctor
+                                      ? "fa-solid fa-user-doctor"
+                                      : isPatient
+                                      ? "fa-solid fa-user"
+                                      : "fa-solid fa-circle-question"
+                                  }
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <div className="turn-content">
+                                <div className="turn-meta">
+                                  <span className={`turn-speaker-label label-${speakerRole}`}>
+                                    {turn.speaker}
+                                  </span>
+                                  <span className="turn-timestamp">Turn {idx + 1}</span>
+                                </div>
+                                <p className="turn-text">{turn.text}</p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="turns-empty">
+                          <p>No separated turns available. Switching to raw transcript view below.</p>
+                          <p className="turns-empty-raw">{transcript || "No transcript available."}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="transcript-raw-view">
+                      <p>{transcript || "No transcript available."}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="note-form">

@@ -3,17 +3,20 @@ import base64
 import json
 import logging
 import os
+import urllib.error
+import urllib.request
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import websockets
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
-SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
+SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "").strip()
 SARVAM_WS_URL = (
     "wss://api.sarvam.ai/speech-to-text-realtime/ws"
     "?model=saaras:v3-realtime&language_code=auto&encoding=linear16&sample_rate=16000"
@@ -21,6 +24,153 @@ SARVAM_WS_URL = (
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sarvam-ws-proxy")
+
+SPEAKER_LABEL_PROMPT = """You are analyzing a doctor-patient medical conversation transcript. The transcript has NO speaker labels. Your job is to split it into individual conversational turns and label each turn as either 'Doctor' or 'Patient', based on conversational role (questions, instructions, prescriptions, exams = Doctor; symptom descriptions, answers, personal history = Patient).
+
+Return ONLY a JSON array in this exact format, no extra text:
+[
+  {"speaker": "Doctor", "text": "..."},
+  {"speaker": "Patient", "text": "..."}
+]
+
+Preserve the original wording exactly — do not paraphrase or summarize. Split the transcript into natural conversational turns in the order they occurred.
+
+Transcript:
+"""
+
+def _clean_and_parse_turns(raw_content: str) -> list[dict] | None:
+    if not raw_content or not raw_content.strip():
+        return None
+    text = raw_content.strip()
+
+    # Strip markdown code fences if present
+    if "```" in text:
+        parts = text.split("```")
+        for part in parts:
+            p = part.strip()
+            if p.startswith("json"):
+                p = p[4:].strip()
+            if p.startswith("[") and p.endswith("]"):
+                text = p
+                break
+
+    # 1. Search for array [...]
+    first_bracket = text.find("[")
+    last_bracket = text.rfind("]")
+    if first_bracket != -1 and last_bracket > first_bracket:
+        try:
+            parsed = json.loads(text[first_bracket : last_bracket + 1])
+            if isinstance(parsed, list) and len(parsed) > 0:
+                return _sanitize_turns(parsed)
+        except Exception:
+            pass
+
+    # 2. Search for object { "turns": [...] }
+    first_brace = text.find("{")
+    last_brace = text.rfind("}")
+    if first_brace != -1 and last_brace > first_brace:
+        try:
+            parsed = json.loads(text[first_brace : last_brace + 1])
+            for key in ["turns", "conversation", "transcript", "dialogue"]:
+                candidate = parsed.get(key)
+                if isinstance(candidate, list) and len(candidate) > 0:
+                    return _sanitize_turns(candidate)
+        except Exception:
+            pass
+
+    return None
+
+def _sanitize_turns(items: list) -> list[dict]:
+    valid_turns = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("text", "")).strip()
+        if not text:
+            continue
+        raw_speaker = str(item.get("speaker", "")).strip().lower()
+        if "doc" in raw_speaker or "physician" in raw_speaker or "clinician" in raw_speaker:
+            speaker = "Doctor"
+        elif "pat" in raw_speaker or "client" in raw_speaker:
+            speaker = "Patient"
+        else:
+            speaker = "Unknown"
+        valid_turns.append({"speaker": speaker, "text": text})
+    return valid_turns
+
+async def _call_sarvam_llm(prompt: str) -> str:
+    url = "https://api.sarvam.ai/v1/chat/completions"
+    headers = {
+        "api-subscription-key": SARVAM_API_KEY,
+        "Authorization": f"Bearer {SARVAM_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": os.getenv("SARVAM_LLM_MODEL", "sarvam-105b"),
+        "max_tokens": 4096,
+        "temperature": 0,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    def _sync_request():
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            msg = data.get("choices", [{}])[0].get("message", {})
+            return msg.get("content") or msg.get("reasoning_content") or ""
+
+    return await asyncio.to_thread(_sync_request)
+
+async def label_speakers(transcript: str) -> list[dict]:
+    """
+    Splits an unlabelled doctor-patient conversation transcript into turns
+    labeled with 'Doctor' or 'Patient' using Sarvam-105B LLM.
+    Handles malformed responses with one retry, then falls back gracefully.
+    """
+    clean = (transcript or "").strip()
+    if not clean:
+        return []
+
+    if not SARVAM_API_KEY:
+        # Fallback when key is missing: single unknown turn
+        return [{"speaker": "Unknown", "text": clean}]
+
+    full_prompt = f"{SPEAKER_LABEL_PROMPT}{clean}"
+
+    # Attempt 1
+    try:
+        raw_1 = await _call_sarvam_llm(full_prompt)
+        turns = _clean_and_parse_turns(raw_1)
+        if turns:
+            return turns
+        logger.warning("Attempt 1 speaker labeling returned unparseable JSON, retrying once...")
+    except Exception as e:
+        logger.warning(f"Attempt 1 speaker labeling failed with error: {e}, retrying once...")
+
+    # Attempt 2 (One retry with corrective prompt)
+    try:
+        retry_prompt = (
+            "CRITICAL: Return ONLY a valid JSON array of objects with keys 'speaker' and 'text'. "
+            f"No markdown fences, no conversational text.\n\n{full_prompt}"
+        )
+        raw_2 = await _call_sarvam_llm(retry_prompt)
+        turns = _clean_and_parse_turns(raw_2)
+        if turns:
+            return turns
+        logger.warning("Attempt 2 speaker labeling also failed to produce valid turns. Falling back.")
+    except Exception as e:
+        logger.error(f"Attempt 2 speaker labeling error: {e}. Falling back gracefully.")
+
+    # Graceful fallback: return the whole transcript as a single 'Unknown' speaker turn
+    return [{"speaker": "Unknown", "text": clean}]
+
+class LabelSpeakersRequest(BaseModel):
+    transcript: str
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,6 +198,11 @@ async def health():
         "sarvam_configured": bool(SARVAM_API_KEY),
         "sarvam_ws_endpoint": "saaras:v3-realtime (linear16, 16kHz, auto language detection)",
     }
+
+@app.post("/api/label-speakers")
+async def api_label_speakers(req: LabelSpeakersRequest):
+    turns = await label_speakers(req.transcript)
+    return {"turns": turns}
 
 @app.websocket("/ws/transcribe")
 async def websocket_transcribe(client_ws: WebSocket):

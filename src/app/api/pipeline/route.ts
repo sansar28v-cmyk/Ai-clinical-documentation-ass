@@ -1,4 +1,4 @@
-import { extractClinicalNote } from "@/lib/sarvam-llm";
+import { extractClinicalNote, labelSpeakers } from "@/lib/sarvam-llm";
 import { ApiConfigError, UpstreamApiError } from "@/lib/clinical-note";
 import { transcribeAudio } from "@/lib/sarvam-stt";
 
@@ -25,13 +25,17 @@ export async function POST(request: Request) {
     }
 
     const sttResult = await transcribeAudio(file);
-    const note = await extractClinicalNote(sttResult.transcript);
+    const [note, turns] = await Promise.all([
+      extractClinicalNote(sttResult.transcript),
+      labelSpeakers(sttResult.transcript),
+    ]);
 
     const mock = !process.env.SARVAM_API_KEY;
     return Response.json({
       transcript: sttResult.transcript,
       language_code: sttResult.language_code,
       note,
+      turns,
       mock,
     });
   } catch (error) {

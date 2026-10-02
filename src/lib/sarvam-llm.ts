@@ -1,5 +1,7 @@
 import { ClinicalNote, normalizeClinicalNote, UpstreamApiError } from "@/lib/clinical-note";
-import { MOCK_NOTE } from "@/lib/mock";
+import { MOCK_NOTE, MOCK_TURNS, SpeakerTurn } from "@/lib/mock";
+
+export type { SpeakerTurn };
 
 const SARVAM_LLM_MODEL = process.env.SARVAM_LLM_MODEL || "sarvam-105b";
 
@@ -261,3 +263,166 @@ export async function extractClinicalNote(transcript: string): Promise<ClinicalN
   // Fallback: Populate directly from transcript so the doctor always has an editable note
   return createFallbackNoteFromTranscript(transcript);
 }
+
+const SPEAKER_LABEL_PROMPT = `You are analyzing a doctor-patient medical conversation transcript. The transcript has NO speaker labels. Your job is to split it into individual conversational turns and label each turn as either 'Doctor' or 'Patient', based on conversational role (questions, instructions, prescriptions, exams = Doctor; symptom descriptions, answers, personal history = Patient).
+
+Return ONLY a JSON array in this exact format, no extra text:
+[
+  {"speaker": "Doctor", "text": "..."},
+  {"speaker": "Patient", "text": "..."}
+]
+
+Preserve the original wording exactly — do not paraphrase or summarize. Split the transcript into natural conversational turns in the order they occurred.
+
+Transcript:`;
+
+async function callSarvamGeneric(apiKey: string, prompt: string): Promise<string> {
+  const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "api-subscription-key": apiKey,
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: SARVAM_LLM_MODEL,
+      max_tokens: 4096,
+      temperature: 0,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    throw new UpstreamApiError(
+      `Sarvam-105B speaker labeling failed (${response.status}): ${errorBody || response.statusText}`,
+      502,
+    );
+  }
+
+  const data = (await response.json()) as SarvamChatResponse;
+  const msg = data.choices?.[0]?.message;
+  let text = (msg?.content || "").trim();
+  if (!text && msg?.reasoning_content) {
+    text = msg.reasoning_content.trim();
+  }
+  return text;
+}
+
+function parseSpeakerTurns(raw: string): SpeakerTurn[] | null {
+  if (!raw || !raw.trim()) return null;
+  let text = raw.trim();
+
+  // Strip markdown code fences if present
+  if (text.includes("```")) {
+    const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (match) {
+      text = match[1].trim();
+    }
+  }
+
+  // 1. Search for array [...]
+  const firstBracket = text.indexOf("[");
+  const lastBracket = text.lastIndexOf("]");
+  if (firstBracket !== -1 && lastBracket > firstBracket) {
+    try {
+      const parsed = JSON.parse(text.slice(firstBracket, lastBracket + 1));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return sanitizeTurns(parsed);
+      }
+    } catch {}
+  }
+
+  // 2. Search for object with key "turns", "conversation", etc.
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      const parsedObj = JSON.parse(text.slice(firstBrace, lastBrace + 1));
+      const candidate =
+        parsedObj.turns ||
+        parsedObj.conversation ||
+        parsedObj.transcript ||
+        parsedObj.dialogue;
+      if (Array.isArray(candidate) && candidate.length > 0) {
+        return sanitizeTurns(candidate);
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+function sanitizeTurns(items: unknown[]): SpeakerTurn[] {
+  const result: SpeakerTurn[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const obj = item as Record<string, unknown>;
+    const text = String(obj.text || "").trim();
+    if (!text) continue;
+
+    const rawSpeaker = String(obj.speaker || "").trim().toLowerCase();
+    let speaker: "Doctor" | "Patient" | "Unknown" = "Unknown";
+    if (
+      rawSpeaker.includes("doc") ||
+      rawSpeaker.includes("physician") ||
+      rawSpeaker.includes("clinician")
+    ) {
+      speaker = "Doctor";
+    } else if (rawSpeaker.includes("pat") || rawSpeaker.includes("client")) {
+      speaker = "Patient";
+    }
+
+    result.push({ speaker, text });
+  }
+  return result;
+}
+
+/**
+ * Splits an unlabelled doctor-patient conversation transcript into turns
+ * labeled with 'Doctor' or 'Patient' using Sarvam-105B LLM.
+ *
+ * Handles malformed responses with one retry, then falls back gracefully to
+ * returning the whole transcript as a single 'Unknown' speaker turn.
+ */
+export async function labelSpeakers(transcript: string): Promise<SpeakerTurn[]> {
+  const clean = (transcript || "").trim();
+  if (!clean) return [];
+
+  const apiKey = process.env.SARVAM_API_KEY;
+  if (!apiKey) {
+    // Demo mode: Return realistic mock speaker turns
+    return MOCK_TURNS;
+  }
+
+  const promptUser = `${SPEAKER_LABEL_PROMPT}\n${clean}`;
+
+  // Attempt 1: Standard structured inference
+  try {
+    const rawAttempt1 = await callSarvamGeneric(apiKey, promptUser);
+    const parsed1 = parseSpeakerTurns(rawAttempt1);
+    if (parsed1 && parsed1.length > 0) {
+      return parsed1;
+    }
+    console.warn("Attempt 1 speaker labeling returned unparseable output, retrying once...");
+  } catch (err) {
+    console.warn("Attempt 1 speaker labeling encountered an error:", err);
+  }
+
+  // Attempt 2: Strict corrective instruction retry
+  try {
+    const correctivePrompt = `CRITICAL: Return ONLY a valid JSON array of objects with keys "speaker" ("Doctor" or "Patient") and "text". No markdown fences, no commentary.\n\n${promptUser}`;
+    const rawAttempt2 = await callSarvamGeneric(apiKey, correctivePrompt);
+    const parsed2 = parseSpeakerTurns(rawAttempt2);
+    if (parsed2 && parsed2.length > 0) {
+      return parsed2;
+    }
+    console.warn("Attempt 2 speaker labeling failed to parse. Falling back gracefully.");
+  } catch (err) {
+    console.error("Attempt 2 speaker labeling error:", err);
+  }
+
+  // Graceful fallback: return the whole transcript as a single "Unknown" speaker turn
+  return [{ speaker: "Unknown", text: clean }];
+}
+

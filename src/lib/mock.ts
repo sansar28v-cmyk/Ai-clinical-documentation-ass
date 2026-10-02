@@ -26,3 +26,24 @@ export const MOCK_NOTE: ClinicalNote = {
   exam_findings: "Throat erythematous and swollen with a few white patches on tonsils; T 98.9°F, BP 118/76, HR 72; lungs clear to auscultation.",
   plan: "Supportive care: acetaminophen for discomfort, honey/warm fluids, rest. Rapid strep test today; return if fever develops or symptoms worsen after 5 days.",
 };
+
+export interface SpeakerTurn {
+  speaker: "Doctor" | "Patient" | "Unknown";
+  text: string;
+}
+
+export const MOCK_TURNS: SpeakerTurn[] = [
+  { speaker: "Doctor", text: "Good morning, Sarah. What brings you in today?" },
+  { speaker: "Patient", text: "I've had a sore throat and a mild cough for about four days, mostly in the evenings." },
+  { speaker: "Doctor", text: "Any fever, or body aches?" },
+  { speaker: "Patient", text: "No fever at all, and no body aches. I just felt a bit run down." },
+  { speaker: "Doctor", text: "Any allergies, asthma, or other medical history I should know about?" },
+  { speaker: "Patient", text: "No allergies. No asthma. I did quit smoking two years ago." },
+  { speaker: "Doctor", text: "What medications are you currently taking?" },
+  { speaker: "Patient", text: "Just ibuprofen sometimes for headaches, and a vitamin D supplement every day." },
+  { speaker: "Doctor", text: "Okay, let's take a look. Your throat is red and swollen, and I can see a few white patches on the tonsils. Your temperature is 98.9, blood pressure 118 over 76, heart rate 72, and your lungs are clear to listen." },
+  { speaker: "Doctor", text: "This looks like acute pharyngitis, most likely viral. I'd recommend acetaminophen for any discomfort, honey and warm fluids, and plenty of rest. I'll order a rapid strep test today just to be safe. If you develop a fever or your symptoms worsen after five days, call us back." },
+  { speaker: "Patient", text: "That makes sense. Thank you." },
+  { speaker: "Doctor", text: "You're welcome — take care." },
+];
+
