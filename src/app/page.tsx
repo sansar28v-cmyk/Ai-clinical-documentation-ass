@@ -21,7 +21,7 @@ export default function HomePage() {
           <header className="site-header">
             <div className="header-row">
               <a className="logo-btn" href="#home" aria-label="AI Clinical Documentation Assistant — Home">
-                <img src="/assets/logo.webp" alt="AI Clinical Documentation Assistant" width={52} height={52} />
+                <img src="/assets/logo.png" alt="" width={52} height={52} />
               </a>
 
               <nav aria-label="Primary">
