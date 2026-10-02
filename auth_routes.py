@@ -23,7 +23,6 @@ class SignupRequest(BaseModel):
     username: str = Field(..., min_length=2, max_length=50)
     password: str = Field(..., min_length=3)
     full_name: str = Field(..., min_length=2, max_length=100)
-    role: str = Field(..., pattern="^(doctor|patient)$")
 
 
 class LoginRequest(BaseModel):
@@ -37,7 +36,6 @@ class CreateConsultationRequest(BaseModel):
     speaker_turns: List[Dict[str, Any]] = Field(default_factory=list)
     note: Dict[str, Any] = Field(default_factory=dict)
     translated_plan: Optional[str] = None
-    patient_id: Optional[int] = None
 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
@@ -55,15 +53,15 @@ async def signup(req: SignupRequest):
             username=clean_username,
             password=req.password,
             full_name=req.full_name,
-            role=req.role,
+            role="doctor",
         )
         return {
-            "message": "User registered successfully",
+            "message": "Doctor registered successfully",
             "user": {
                 "id": user["id"],
                 "username": user["username"],
                 "full_name": user["full_name"],
-                "role": user["role"],
+                "role": "doctor",
             },
         }
     except Exception as e:
@@ -87,14 +85,14 @@ async def login(req: LoginRequest):
     token = create_access_token({
         "sub": user["username"],
         "user_id": user["id"],
-        "role": user["role"],
+        "role": "doctor",
         "full_name": user["full_name"],
     })
 
     return {
         "access_token": token,
         "token_type": "bearer",
-        "role": user["role"],
+        "role": "doctor",
         "full_name": user["full_name"],
         "username": user["username"],
         "user_id": user["id"],
@@ -126,22 +124,12 @@ async def get_consultation(
             detail="Consultation not found.",
         )
 
-    # Authorization check:
-    # A doctor can see their own consultations (or any doctor in hospital clinic demo)
-    # A patient can only view consultations matching their patient_id or name
-    if current_user["role"] == "patient":
-        matches_id = consultation.get("patient_id") == current_user["id"]
-        matches_name = (
-            consultation.get("patient_name", "").strip().lower()
-            == current_user.get("full_name", "").strip().lower()
-            or consultation.get("patient_name", "").strip().lower()
-            == current_user.get("username", "").strip().lower()
+    # Only the doctor who created the consultation can view it
+    if consultation.get("doctor_id") != current_user["id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view this consultation.",
         )
-        if not (matches_id or matches_name):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to view this consultation.",
-            )
 
     return consultation
 
@@ -151,12 +139,6 @@ async def create_new_consultation(
     req: CreateConsultationRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
-    if current_user["role"] != "doctor":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only doctors can save consultation documentation.",
-        )
-
     try:
         cons_id = create_consultation(
             doctor_id=current_user["id"],
@@ -165,7 +147,6 @@ async def create_new_consultation(
             turns=req.speaker_turns,
             note=req.note,
             translated_plan=req.translated_plan,
-            patient_id=req.patient_id,
         )
         return {
             "id": cons_id,

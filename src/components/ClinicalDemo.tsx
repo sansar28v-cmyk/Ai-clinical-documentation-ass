@@ -24,7 +24,7 @@ const PROCESSING_STEPS = [
 type InputMode = "live" | "upload";
 
 interface ClinicalDemoProps {
-  onRequestLogin?: (role: "doctor" | "patient") => void;
+  onRequestLogin?: () => void;
   onNavigateToDashboard?: () => void;
 }
 
@@ -32,7 +32,7 @@ export default function ClinicalDemo({
   onRequestLogin,
   onNavigateToDashboard,
 }: ClinicalDemoProps) {
-  const { token, user, role } = useAuth();
+  const { token, user } = useAuth();
   const [stage, setStage] = useState<Stage>("idle");
   const [patientName, setPatientName] = useState("Anita Roy");
   const [isSaving, setIsSaving] = useState(false);
@@ -288,7 +288,7 @@ export default function ClinicalDemo({
 
   async function handleFinalize() {
     setStage("finalized");
-    if (token && role === "doctor") {
+    if (token) {
       setIsSaving(true);
       setSaveError(null);
       try {
@@ -365,7 +365,7 @@ export default function ClinicalDemo({
           </div>
         )}
 
-        {!token || role !== "doctor" ? (
+        {!token ? (
           <div className="doctor-gate-card">
             <div className="gate-icon-badge">
               <i className="fa-solid fa-user-doctor" />
@@ -377,7 +377,7 @@ export default function ClinicalDemo({
             <div className="gate-actions">
               <button
                 type="button"
-                onClick={() => (onRequestLogin ? onRequestLogin("doctor") : null)}
+                onClick={() => (onRequestLogin ? onRequestLogin() : null)}
                 className="btn-start-consultation"
               >
                 <i className="fa-solid fa-arrow-right-to-bracket" /> Sign In as Doctor

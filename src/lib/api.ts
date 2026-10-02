@@ -15,13 +15,12 @@ export interface User {
   id: number;
   username: string;
   full_name: string;
-  role: "doctor" | "patient";
+  role?: string;
 }
 
 export interface ConsultationItem {
   id: number;
   doctor_id: number;
-  patient_id?: number | null;
   patient_name: string;
   doctor_name?: string;
   transcript: string;

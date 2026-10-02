@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ClinicalDemo from "@/components/ClinicalDemo";
 import AuthView from "@/components/AuthView";
 import DoctorDashboard from "@/components/DoctorDashboard";
-import PatientDashboard from "@/components/PatientDashboard";
 import ConsultationDetail from "@/components/ConsultationDetail";
 import { useAuth } from "@/context/AuthContext";
 
@@ -12,22 +11,56 @@ type ViewState =
   | "landing"
   | "login"
   | "doctor-dashboard"
-  | "patient-dashboard"
   | "consultation-detail"
   | "live-consultation";
 
 export default function HomePage() {
-  const { token, user, role, logout } = useAuth();
+  const { token, user, logout } = useAuth();
   const [currentView, setCurrentView] = useState<ViewState>("landing");
   const [selectedConsultationId, setSelectedConsultationId] = useState<number | null>(null);
-  const [authInitialRole, setAuthInitialRole] = useState<"doctor" | "patient">("doctor");
 
-  const handleLoginSuccess = (userRole: "doctor" | "patient") => {
-    if (userRole === "doctor") {
-      setCurrentView("doctor-dashboard");
-    } else {
-      setCurrentView("patient-dashboard");
-    }
+  useEffect(() => {
+    if (currentView !== "landing") return;
+    const statElements = document.querySelectorAll<HTMLElement>(".stat-value[data-target]");
+    const cleanups: Array<() => void> = [];
+
+    statElements.forEach((el, index) => {
+      const target = parseFloat(el.getAttribute("data-target") || "0");
+      const decimals = parseInt(el.getAttribute("data-decimals") || "0", 10);
+      const suffix = el.getAttribute("data-suffix") || "";
+      const duration = 1200;
+      let start: number | null = null;
+      let animId: number;
+
+      const step = (timestamp: number) => {
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = target * eased;
+        const formatted = decimals > 0 ? current.toFixed(decimals) : Math.round(current).toString();
+        el.textContent = formatted + suffix;
+        if (progress < 1) {
+          animId = requestAnimationFrame(step);
+        }
+      };
+
+      const timer = setTimeout(() => {
+        animId = requestAnimationFrame(step);
+      }, 250 + index * 100);
+
+      cleanups.push(() => {
+        clearTimeout(timer);
+        cancelAnimationFrame(animId);
+      });
+    });
+
+    return () => {
+      cleanups.forEach((c) => c());
+    };
+  }, [currentView]);
+
+  const handleLoginSuccess = () => {
+    setCurrentView("doctor-dashboard");
   };
 
   const handleLogout = () => {
@@ -35,14 +68,12 @@ export default function HomePage() {
     setCurrentView("login");
   };
 
-  const openLogin = (intendedRole: "doctor" | "patient" = "doctor") => {
-    setAuthInitialRole(intendedRole);
+  const openLogin = () => {
     setCurrentView("login");
   };
 
   return (
     <>
-      {/* ---------------- Unified Site Header ---------------- */}
       {/* ---------------- Unified Site Header ---------------- */}
       <header className={`site-header ${currentView !== "landing" && currentView !== "login" ? "dashboard-header-bar" : ""}`}>
         <div className="header-row">
@@ -67,7 +98,7 @@ export default function HomePage() {
                 </button>
               </li>
 
-              {token && role === "doctor" && (
+              {token && (
                 <>
                   <li>
                     <button
@@ -88,18 +119,6 @@ export default function HomePage() {
                     </button>
                   </li>
                 </>
-              )}
-
-              {token && role === "patient" && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentView("patient-dashboard")}
-                    className={`nav-link ${currentView === "patient-dashboard" ? "active" : ""}`}
-                  >
-                    My Records
-                  </button>
-                </li>
               )}
 
               {!token && (
@@ -132,16 +151,14 @@ export default function HomePage() {
           <div className="nav-auth-group">
             {token && user ? (
               <>
-                <div className="nav-user-chip" title={`${user.full_name} (${user.role === "doctor" ? "Doctor" : "Patient"})`}>
-                  <i className={`fa-solid ${user.role === "doctor" ? "fa-stethoscope" : "fa-hospital-user"}`} />
+                <div className="nav-user-chip" title={`${user.full_name} (Doctor)`}>
+                  <i className="fa-solid fa-user-doctor" />
                   <span className="nav-user-name">
-                    {user.role === "doctor" && !user.full_name.toLowerCase().startsWith("dr")
+                    {!user.full_name.toLowerCase().startsWith("dr")
                       ? `Dr. ${user.full_name}`
                       : user.full_name}
                   </span>
-                  <span className="nav-user-role-badge">
-                    {user.role === "doctor" ? "MD" : "Patient"}
-                  </span>
+                  <span className="nav-user-role-badge">MD</span>
                 </div>
                 <button
                   type="button"
@@ -153,13 +170,23 @@ export default function HomePage() {
                   <span>Logout</span>
                 </button>
               </>
+            ) : currentView === "login" ? (
+              <button
+                type="button"
+                className="sign-in-btn nav-back-home-btn"
+                onClick={() => setCurrentView("landing")}
+                title="Return to home page"
+              >
+                <i className="fa-solid fa-arrow-left" style={{ marginRight: "6px" }} />
+                <span>Back to Home</span>
+              </button>
             ) : (
               <button
                 type="button"
                 className="sign-in-btn"
-                onClick={() => openLogin("doctor")}
+                onClick={openLogin}
               >
-                Sign In / Portal
+                Doctor Sign In
               </button>
             )}
           </div>
@@ -168,7 +195,7 @@ export default function HomePage() {
 
       {/* ---------------- Main Routed View ---------------- */}
       {currentView === "login" && (
-        <section className="hero-viewport" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <section className="auth-view-hero-wrapper">
           <div className="bg">
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <video className="bg-video" autoPlay muted loop playsInline>
@@ -178,9 +205,8 @@ export default function HomePage() {
               />
             </video>
           </div>
-          <div style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: "480px", padding: "20px", margin: "auto" }}>
+          <div className="auth-card-container">
             <AuthView
-              initialRole={authInitialRole}
               onClose={() => setCurrentView("landing")}
               onSuccess={handleLoginSuccess}
             />
@@ -200,25 +226,11 @@ export default function HomePage() {
         </main>
       )}
 
-      {currentView === "patient-dashboard" && (
-        <main className="dashboard-page-view" style={{ paddingTop: "20px" }}>
-          <PatientDashboard
-            onViewConsultation={(id) => {
-              setSelectedConsultationId(id);
-              setCurrentView("consultation-detail");
-            }}
-          />
-        </main>
-      )}
-
       {currentView === "consultation-detail" && selectedConsultationId && (
         <main className="detail-page-view" style={{ paddingTop: "20px" }}>
           <ConsultationDetail
             consultationId={selectedConsultationId}
-            onBack={() => {
-              if (role === "doctor") setCurrentView("doctor-dashboard");
-              else setCurrentView("patient-dashboard");
-            }}
+            onBack={() => setCurrentView("doctor-dashboard")}
           />
         </main>
       )}
@@ -226,7 +238,7 @@ export default function HomePage() {
       {currentView === "live-consultation" && (
         <main className="consultation-live-view" style={{ paddingTop: "40px" }}>
           <ClinicalDemo
-            onRequestLogin={(r) => openLogin(r)}
+            onRequestLogin={openLogin}
             onNavigateToDashboard={() => setCurrentView("doctor-dashboard")}
           />
         </main>
@@ -283,7 +295,7 @@ export default function HomePage() {
                 </p>
 
                 <div className="cta-group anim" style={{ ["--d" as string]: "0.4s" }}>
-                  {token && role === "doctor" ? (
+                  {token ? (
                     <button
                       type="button"
                       onClick={() => setCurrentView("live-consultation")}
@@ -294,7 +306,7 @@ export default function HomePage() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => openLogin("doctor")}
+                      onClick={openLogin}
                       className="cta-btn"
                     >
                       Physician Login &amp; Demo
@@ -311,28 +323,28 @@ export default function HomePage() {
                 <div className="stat anim" style={{ ["--d" as string]: "0.5s" }}>
                   <span className="stat-icon">&lt;</span>
                   <span className="stat-value" data-target="60" data-decimals="0" data-suffix="s">
-                    0s
+                    60s
                   </span>
                   <span className="stat-label">Avg. Transcription Time</span>
                 </div>
                 <div className="stat anim" style={{ ["--d" as string]: "0.58s" }}>
                   <span className="stat-icon">%</span>
                   <span className="stat-value" data-target="97.8" data-decimals="1" data-suffix="%">
-                    0.0%
+                    97.8%
                   </span>
                   <span className="stat-label">Extraction Accuracy</span>
                 </div>
                 <div className="stat anim" style={{ ["--d" as string]: "0.66s" }}>
                   <span className="stat-icon">*</span>
                   <span className="stat-value" data-target="10" data-decimals="0" data-suffix="min">
-                    0min
+                    10min
                   </span>
                   <span className="stat-label">Saved Per Note</span>
                 </div>
                 <div className="stat anim" style={{ ["--d" as string]: "0.74s" }}>
                   <span className="stat-icon">#</span>
                   <span className="stat-value" data-target="24" data-decimals="0" data-suffix="/7">
-                    0/7
+                    24/7
                   </span>
                   <span className="stat-label">Available Anytime</span>
                 </div>
@@ -380,7 +392,7 @@ export default function HomePage() {
 
           {/* ---------------- Live demo ---------------- */}
           <ClinicalDemo
-            onRequestLogin={(r) => openLogin(r)}
+            onRequestLogin={openLogin}
             onNavigateToDashboard={() => setCurrentView("doctor-dashboard")}
           />
         </>

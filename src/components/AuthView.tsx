@@ -4,22 +4,19 @@ import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 interface AuthViewProps {
-  onSuccess?: (role: "doctor" | "patient") => void;
+  onSuccess?: () => void;
   onClose?: () => void;
-  initialRole?: "doctor" | "patient";
   isModal?: boolean;
 }
 
 export default function AuthView({
   onSuccess,
   onClose,
-  initialRole = "doctor",
   isModal = false,
 }: AuthViewProps) {
   const { login, signup, loading, error, clearError } = useAuth();
 
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [selectedRole, setSelectedRole] = useState<"doctor" | "patient">(initialRole);
 
   // Form fields
   const [username, setUsername] = useState("");
@@ -27,12 +24,6 @@ export default function AuthView({
   const [fullName, setFullName] = useState("");
   const [signupSuccessMsg, setSignupSuccessMsg] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
-
-  const handleRoleChange = (role: "doctor" | "patient") => {
-    setSelectedRole(role);
-    clearError();
-    setLocalError(null);
-  };
 
   const handleModeSwitch = (newMode: "login" | "signup") => {
     setMode(newMode);
@@ -53,12 +44,11 @@ export default function AuthView({
         return;
       }
       try {
-        const user = await login(username, password, selectedRole);
+        await login(username, password);
         if (onSuccess) {
-          onSuccess(user.role);
+          onSuccess();
         }
       } catch (err: any) {
-        // error is handled in context, but fallback:
         setLocalError(err.message || "Invalid username or password");
       }
     } else {
@@ -72,7 +62,7 @@ export default function AuthView({
         return;
       }
       try {
-        await signup(username, password, fullName, selectedRole);
+        await signup(username, password, fullName);
         setSignupSuccessMsg(`Account created for ${fullName}! Please sign in now.`);
         setMode("login");
       } catch (err: any) {
@@ -82,16 +72,8 @@ export default function AuthView({
   };
 
   const setQuickDoctor = () => {
-    setSelectedRole("doctor");
     setUsername("testdoc");
     setPassword("password123");
-  };
-
-  const setQuickPatient = () => {
-    setSelectedRole("patient");
-    setUsername("anita");
-    setPassword("patient123");
-    setFullName("Anita Roy");
   };
 
   const displayError = localError || error;
@@ -112,50 +94,16 @@ export default function AuthView({
 
         <div className="auth-header">
           <div className="auth-icon-badge">
-            {selectedRole === "doctor" ? (
-              <i className="fa-solid fa-user-doctor" />
-            ) : (
-              <i className="fa-solid fa-hospital-user" />
-            )}
+            <i className="fa-solid fa-user-doctor" />
           </div>
           <h2 className="auth-title">
-            {mode === "login"
-              ? selectedRole === "doctor"
-                ? "Doctor Clinical Portal"
-                : "Patient Health Portal"
-              : selectedRole === "doctor"
-              ? "Register Doctor Account"
-              : "Register Patient Account"}
+            {mode === "login" ? "Doctor Clinical Portal" : "Register Doctor Account"}
           </h2>
           <p className="auth-subtitle">
             {mode === "login"
-              ? "Sign in with your secure credentials"
-              : "Create a new clinical account to get started"}
+              ? "Sign in with your secure physician credentials"
+              : "Create a doctor account to document and manage patient consultations"}
           </p>
-        </div>
-
-        {/* Role Toggle Tabs */}
-        <div className="auth-role-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={selectedRole === "doctor"}
-            className={`auth-role-tab ${selectedRole === "doctor" ? "active" : ""}`}
-            onClick={() => handleRoleChange("doctor")}
-          >
-            <i className="fa-solid fa-stethoscope" />
-            <span>Doctor</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={selectedRole === "patient"}
-            className={`auth-role-tab ${selectedRole === "patient" ? "active" : ""}`}
-            onClick={() => handleRoleChange("patient")}
-          >
-            <i className="fa-solid fa-user-injured" />
-            <span>Patient</span>
-          </button>
         </div>
 
         {signupSuccessMsg && (
@@ -181,7 +129,7 @@ export default function AuthView({
                 <input
                   id="auth-fullname"
                   type="text"
-                  placeholder={selectedRole === "doctor" ? "e.g. Dr. Sarah Jenkins" : "e.g. Anita Roy"}
+                  placeholder="e.g. Dr. Sarah Jenkins"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
@@ -197,7 +145,7 @@ export default function AuthView({
               <input
                 id="auth-username"
                 type="text"
-                placeholder={selectedRole === "doctor" ? "e.g. dr_smith or testdoc" : "e.g. anita_roy"}
+                placeholder="e.g. dr_smith or testdoc"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoCapitalize="none"
@@ -232,21 +180,18 @@ export default function AuthView({
                 <span>{mode === "login" ? "Verifying..." : "Creating Account..."}</span>
               </span>
             ) : mode === "login" ? (
-              <span>Sign In as {selectedRole === "doctor" ? "Doctor" : "Patient"}</span>
+              <span>Sign In to Doctor Portal</span>
             ) : (
-              <span>Register as {selectedRole === "doctor" ? "Doctor" : "Patient"}</span>
+              <span>Create Doctor Account</span>
             )}
           </button>
         </form>
 
-        {/* Demo Fast-fill options */}
+        {/* Demo Fast-fill option */}
         <div className="auth-demo-chips">
           <span className="demo-chips-label">Demo One-Click Fill:</span>
           <button type="button" onClick={setQuickDoctor} className="demo-chip">
             <i className="fa-solid fa-user-doctor" /> Doctor: testdoc
-          </button>
-          <button type="button" onClick={setQuickPatient} className="demo-chip">
-            <i className="fa-solid fa-hospital-user" /> Patient: anita
           </button>
         </div>
 

@@ -15,7 +15,7 @@ export default function ConsultationDetail({
   consultationId,
   onBack,
 }: ConsultationDetailProps) {
-  const { token, user, role } = useAuth();
+  const { token, user } = useAuth();
   const [data, setData] = useState<ConsultationItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +109,7 @@ export default function ConsultationDetail({
       <div className="detail-nav-bar">
         <button type="button" onClick={onBack} className="btn-back">
           <i className="fa-solid fa-arrow-left" />
-          <span>Back to {role === "doctor" ? "Doctor Dashboard" : "Patient Portal"}</span>
+          <span>Back to Doctor Dashboard</span>
         </button>
         <div className="detail-status-pill">
           <span className="detail-status-dot" />

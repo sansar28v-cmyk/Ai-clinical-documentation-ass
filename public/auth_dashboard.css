@@ -233,11 +233,25 @@
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
+  width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 100px 20px 60px;
+  justify-content: flex-start;
+  padding-top: clamp(100px, 14vh, 125px);
+  padding-bottom: clamp(40px, 6vh, 60px);
+  padding-left: clamp(16px, 3vw, 24px);
+  padding-right: clamp(16px, 3vw, 24px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.auth-view-hero-wrapper .bg {
+  position: fixed;
+  inset: 0;
+  background: #000;
   overflow: hidden;
+  z-index: 0;
 }
 
 .auth-card-container {
@@ -246,9 +260,11 @@
   align-items: center;
   width: 100%;
   max-width: 480px;
-  margin: 0 auto;
+  margin-top: auto;
+  margin-bottom: auto;
   position: relative;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .auth-card {

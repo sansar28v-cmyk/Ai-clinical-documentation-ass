@@ -7,11 +7,11 @@ interface AuthContextType {
   token: string | null;
   user: User | null;
   isAuthenticated: boolean;
-  role: "doctor" | "patient" | null;
+  role: string | null;
   loading: boolean;
   error: string | null;
-  login: (username: string, password: string, intendedRole?: "doctor" | "patient") => Promise<User>;
-  signup: (username: string, password: string, fullName: string, role: "doctor" | "patient") => Promise<void>;
+  login: (username: string, password: string) => Promise<User>;
+  signup: (username: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
 }
@@ -25,14 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const login = async (username: string, password: string, intendedRole?: "doctor" | "patient"): Promise<User> => {
+  const login = async (username: string, password: string): Promise<User> => {
     setLoading(true);
     setError(null);
     try {
       const data = await apiRequest<{
         access_token: string;
         token_type: string;
-        role: "doctor" | "patient";
+        role?: string;
         full_name: string;
         username: string;
         user_id: number;
@@ -41,15 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { username, password },
       });
 
-      if (intendedRole && data.role !== intendedRole) {
-        throw new Error(`This account is registered as a ${data.role}. Please select the ${data.role === "doctor" ? "Doctor" : "Patient"} tab to sign in.`);
-      }
-
       const loggedUser: User = {
         id: data.user_id,
         username: data.username,
         full_name: data.full_name,
-        role: data.role,
+        role: "doctor",
       };
 
       setToken(data.access_token);
@@ -67,8 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (
     username: string,
     password: string,
-    fullName: string,
-    role: "doctor" | "patient"
+    fullName: string
   ): Promise<void> => {
     setLoading(true);
     setError(null);
@@ -79,7 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username,
           password,
           full_name: fullName,
-          role,
         },
       });
     } catch (err: any) {
@@ -107,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         user,
         isAuthenticated: !!token && !!user,
-        role: user ? user.role : null,
+        role: user ? user.role || "doctor" : null,
         loading,
         error,
         login,
