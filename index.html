@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>AI Clinical Documentation Assistant — Chart Less. Care More.</title>
+    <meta
+      name="description"
+      content="Upload a doctor-patient consultation recording and let AI transcribe it, extract a structured clinical note, and hand it back for your review in minutes."
+    />
+
+    <!-- Inter (UI font) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- BubbledotICG-FinePos (retro dot-matrix display font) -->
+    <link
+      href="https://db.onlinewebfonts.com/c/8cb707a9b8a73f8a7403336b861c3074?family=BubbledotICG-FinePos"
+      rel="stylesheet"
+    />
+
+    <!-- Font Awesome 6.5.2 (clinical/brand icons) -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section id="home" class="hero-viewport">
+      <div class="bg">
+        <video class="bg-video" autoplay muted loop playsinline>
+          <source
+            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260809_012548_ef22562c-c0ae-4816-ad9d-f8922af4e6a7.mp4"
+            type="video/mp4"
+          />
+        </video>
+      </div>
+
+      <div class="page">
+        <!-- ---------------- Header ---------------- -->
+        <header class="site-header">
+          <div class="header-row">
+            <a class="logo-btn" href="#home" aria-label="AI Clinical Documentation Assistant — Home">
+              <img src="assets/logo.webp" alt="" width="52" height="52" />
+            </a>
+
+            <nav aria-label="Primary">
+              <ul class="nav-pill">
+                <li><a href="#home" class="nav-link active">Home</a></li>
+                <li><a href="#demo" class="nav-link">Product</a></li>
+                <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+                <li><a href="#contact" class="nav-link">Contact</a></li>
+              </ul>
+            </nav>
+
+            <a class="sign-in-btn" href="#demo">Try the Demo</a>
+
+            <button
+              class="burger-btn"
+              type="button"
+              aria-label="Open menu"
+              aria-expanded="false"
+              aria-controls="mobile-menu"
+            >
+              <span class="bars">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+              </span>
+            </button>
+          </div>
+        </header>
+
+        <!-- ---------------- Hero ---------------- -->
+        <main class="hero">
+          <div class="trust-row anim" style="--d: 0.05s">
+            <div class="trust-avatar a1">
+              <div class="inner"><i class="fa-solid fa-stethoscope" aria-hidden="true"></i></div>
+            </div>
+            <div class="trust-avatar a2">
+              <div class="inner"><i class="fa-solid fa-hospital" aria-hidden="true"></i></div>
+            </div>
+            <div class="trust-avatar a3">
+              <div class="inner"><i class="fa-solid fa-notes-medical" aria-hidden="true"></i></div>
+            </div>
+            <div class="trust-pill">
+              <span>Built for Busy Care Teams</span>
+            </div>
+          </div>
+
+          <h1 class="headline anim">
+            <span class="line1">Chart Less.</span>
+            <span class="line2">Care More.</span>
+          </h1>
+
+          <p class="subhead anim" style="--d: 0.28s">
+            The AI Clinical Documentation Assistant listens to your consultations, transcribes
+            them, and drafts a structured clinical note — so you review and finalize in minutes,
+            not hours.
+          </p>
+
+          <div class="cta-group anim" style="--d: 0.4s">
+            <a href="#demo" class="cta-btn">Try the Demo</a>
+            <a href="#how-it-works" class="cta-secondary">How It Works</a>
+          </div>
+        </main>
+
+        <!-- ---------------- Stats footer ---------------- -->
+        <footer class="stats">
+          <div class="stat anim" style="--d: 0.5s">
+            <span class="stat-icon">&lt;</span>
+            <span class="stat-value" data-target="60" data-decimals="0" data-suffix="s">0s</span>
+            <span class="stat-label">Avg. Transcription Time</span>
+          </div>
+          <div class="stat anim" style="--d: 0.58s">
+            <span class="stat-icon">%</span>
+            <span class="stat-value" data-target="97.8" data-decimals="1" data-suffix="%">0.0%</span>
+            <span class="stat-label">Extraction Accuracy</span>
+          </div>
+          <div class="stat anim" style="--d: 0.66s">
+            <span class="stat-icon">*</span>
+            <span class="stat-value" data-target="10" data-decimals="0" data-suffix="min">0min</span>
+            <span class="stat-label">Saved Per Note</span>
+          </div>
+          <div class="stat anim" style="--d: 0.74s">
+            <span class="stat-icon">#</span>
+            <span class="stat-value" data-target="24" data-decimals="0" data-suffix="/7">0/7</span>
+            <span class="stat-label">Available Anytime</span>
+          </div>
+        </footer>
+
+        <div class="scroll-cue">
+          <span>Scroll</span>
+          <span class="chevron"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------- How it works ---------------- -->
+    <section id="how-it-works" class="section">
+      <div class="section-inner">
+        <p class="section-kicker">The Problem &amp; The Fix</p>
+        <h2 class="section-title">Doctors spend hours on paperwork instead of patients.</h2>
+        <p class="section-subtitle">
+          Clinicians lose an estimated 1–2 hours a day to manual charting. The AI Clinical
+          Documentation Assistant removes that burden: record the consultation, and let AI turn it
+          into a structured, editable note in under a minute.
+        </p>
+        <div class="how-steps">
+          <div class="how-step">
+            <span class="how-step-num">1</span>
+            <h3>Upload the Recording</h3>
+            <p>Drop in a .wav/.mp3 recording of the doctor-patient consultation — nothing is saved to disk.</p>
+          </div>
+          <div class="how-step">
+            <span class="how-step-num">2</span>
+            <h3>AI Transcribes &amp; Extracts</h3>
+            <p>
+              Sarvam AI transcribes the audio (auto-detecting Indian languages), then Sarvam-105B extracts chief complaint, HPI, PMH,
+              medications, exam findings, and plan — handling negation correctly.
+            </p>
+          </div>
+          <div class="how-step">
+            <span class="how-step-num">3</span>
+            <h3>Review &amp; Finalize</h3>
+            <p>Edit any field directly, finalize the note, then export it as text, PDF, or a mock EHR payload.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------- Live demo ---------------- -->
+    <section id="demo" class="section demo-section">
+      <div class="section-inner demo-inner">
+        <p class="demo-kicker">Live Demo</p>
+        <h2 class="demo-title">See It In Action</h2>
+        <p class="demo-subtitle">
+          This static preview ships the marketing experience only. The full interactive demo
+          (audio upload → Sarvam AI transcription → Sarvam-105B extraction → editable note) runs in the
+          deployed full-stack application, since it needs a server to call the AI APIs securely.
+        </p>
+        <div class="file-preview">
+          <div class="file-preview-info">
+            <span class="file-preview-icon">🎧</span>
+            <div>
+              <p class="file-preview-name">Run the full app to try the live demo</p>
+              <p class="file-preview-size">See README.md for setup instructions</p>
+            </div>
+          </div>
+          <a href="#contact" class="btn-primary">Contact Us</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------- Footer / contact ---------------- -->
+    <footer id="contact" class="site-footer">
+      <div class="footer-inner">
+        <p>
+          🔒 Privacy by design — audio and transcripts are processed in memory only and are never
+          written to disk or a database.
+        </p>
+      </div>
+    </footer>
+
+    <!-- ---------------- Mobile menu ---------------- -->
+    <div class="mobile-overlay" hidden></div>
+    <nav class="mobile-menu" id="mobile-menu" hidden aria-label="Mobile">
+      <ul>
+        <li><a href="#home" class="mobile-link active">Home</a></li>
+        <li><a href="#demo" class="mobile-link">Product</a></li>
+        <li><a href="#how-it-works" class="mobile-link">How It Works</a></li>
+        <li><a href="#contact" class="mobile-link">Contact</a></li>
+      </ul>
+      <a class="mobile-sign-in" href="#demo">Try the Demo</a>
+    </nav>
+
+    <script src="main.js" defer></script>
+  </body>
+</html>

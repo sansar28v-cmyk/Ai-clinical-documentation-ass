@@ -1,0 +1,3 @@
+/* All visual styling for this app lives in /public/styles.css, which is
+   loaded via a <link rel="stylesheet"> tag in the root layout so that the
+   landing page matches a plain static HTML/CSS/JS implementation exactly. */

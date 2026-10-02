@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.next/
+
+# environment variables
+.env
+.env.local
+.env.*.local
+
+# build
+out/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
