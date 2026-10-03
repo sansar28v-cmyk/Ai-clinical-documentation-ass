@@ -20,7 +20,6 @@ export default function ConsultationDetail({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogueView, setDialogueView] = useState<"script" | "chat" | "raw">("script");
-  const [mobileSection, setMobileSection] = useState<"note" | "dialogue">("note");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -172,34 +171,10 @@ export default function ConsultationDetail({
         </div>
       </div>
 
-      {/* Mobile-Only Section Switcher (Shown on screens <= 768px) */}
-      <div className="detail-mobile-section-tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobileSection === "note"}
-          className={`detail-mobile-tab ${mobileSection === "note" ? "active" : ""}`}
-          onClick={() => setMobileSection("note")}
-        >
-          <i className="fa-solid fa-file-medical" />
-          <span>Structured Note</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobileSection === "dialogue"}
-          className={`detail-mobile-tab ${mobileSection === "dialogue" ? "active" : ""}`}
-          onClick={() => setMobileSection("dialogue")}
-        >
-          <i className="fa-solid fa-comments" />
-          <span>Dialogue Transcript ({turns.length})</span>
-        </button>
-      </div>
-
       {/* Main 2-Column Content Layout: Left = Diarized Dialogue, Right = Finalized Structured Note */}
       <div className="detail-grid">
         {/* Left Column: Speaker-Labeled Transcript */}
-        <div className={`detail-panel dialogue-panel ${mobileSection !== "dialogue" ? "mobile-hidden-section" : ""}`}>
+        <div className="detail-panel dialogue-panel">
           <div className="detail-panel-head">
             <div className="panel-title-group">
               <i className="fa-solid fa-comments text-primary-accent" />
@@ -291,7 +266,7 @@ export default function ConsultationDetail({
         </div>
 
         {/* Right Column: Finalized Structured Clinical Note */}
-        <div className={`detail-panel note-panel ${mobileSection !== "note" ? "mobile-hidden-section" : ""}`}>
+        <div className="detail-panel note-panel">
           <div className="detail-panel-head">
             <div className="panel-title-group">
               <i className="fa-solid fa-file-medical text-primary-accent" />
