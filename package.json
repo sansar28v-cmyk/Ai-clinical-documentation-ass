@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "dotenv": "17.3.1",
     "drizzle-orm": "0.45.2",
     "jspdf": "^4.2.1",
