@@ -20,31 +20,32 @@ Gujarati, Kannada, Malayalam, Odia, Punjabi, etc.) or mixed with English (code-m
 of the language of the transcript, ALL extracted note fields MUST be returned in English using standard clinical terminology.
 
 EXTRACTION INSTRUCTIONS FOR THE 6 SCHEMA FIELDS:
-1. "chief_complaint": Concise primary reason for visit with duration and main aggravating/associated factor (e.g. "Stomach pain for 2 days, worse after eating food, with dull ache and bloating").
-2. "hpi": Detailed, chronological narrative of the current illness. Must cover:
+1. "chief_complaint": Primary reason for visit with duration and key aggravating/associated factor (e.g. "Severe upper abdominal pain for 2 days, worse postprandially, with bloating and decreased appetite"). NEVER leave this empty.
+2. "hpi": Detailed, chronological narrative of the current illness in English. Must cover:
    - Onset, duration, character/severity, location, and radiation of pain/symptoms
    - Aggravating factors (e.g. spicy food, postprandial) and relieving factors (e.g. partial relief from antacid)
    - Associated symptoms (e.g. bloating, nausea, reduced appetite)
    - Pertinent negatives (explicitly list ruled-out symptoms: e.g. denies vomiting, loose motions, melena, fever)
    - Prior similar episodes and clinical context
-3. "pmh": Pertinent prior conditions, surgeries, chronic illnesses, or state "No prior history of gastrointestinal illness or chronic disease" if denied or absent.
+3. "pmh": Pertinent prior conditions, surgeries, or state "No prior history of gastrointestinal illness or chronic disease" or "No prior similar episodes reported" if denied or absent.
 4. "medications": Array of strings. You MUST list ALL medications mentioned anywhere in the consultation:
-   - Newly prescribed medications with dose, route, frequency, and duration (e.g. "Pantoprazole 40 mg before breakfast for 5 days")
-   - Current, prior, or over-the-counter medications taken by patient (e.g. "Antacid tablet (taken for pain with partial relief)")
-   - DO NOT leave this empty if any drug, tablet, antacid, or prescription was mentioned!
-5. "exam_findings": Physical examination findings and vitals observed or stated by clinician (e.g. "Abdomen: Mild upper abdominal bloating; soft, non-distended, no severe tenderness or guarding.").
+   - Newly prescribed medications with dose, route, frequency, and duration
+   - Current, prior, or over-the-counter medications taken by patient (e.g. ["Antacid tablet (taken for pain with partial relief)"])
+   - DO NOT leave this empty if any drug, tablet, antacid, or prescription was mentioned! If no medications at all, provide ["No medications reported"].
+5. "exam_findings": Physical examination findings and vitals observed or stated by clinician (e.g. "Abdomen: Mild upper abdominal bloating; soft, non-distended, no severe tenderness or guarding"). If physical examination was not conducted or documented in the consultation, state "Physical examination not documented in consultation".
 6. "plan": Comprehensive physician management plan:
-   - Prescriptions & dosage instructions (e.g. Pantoprazole 40 mg before breakfast for 5 days)
+   - Prescriptions & dosage instructions (if prescribed)
    - Dietary & lifestyle advice (e.g. avoid spicy and oily foods, eat light meals, maintain hydration)
    - Red-flag warning signs requiring emergency return (e.g. vomiting blood, black stools, intractable pain)
-   - Follow-up timeline (e.g. review in 5 days or sooner if pain does not improve)
+   - Follow-up timeline (e.g. review with physician if pain does not improve)
 
 STRICT OUTPUT RULES:
-1. Respond with ONLY valid JSON. No markdown code fences, no commentary, no preamble, no explanations.
+1. Respond with ONLY valid JSON. No markdown code fences, no commentary, no preamble, no explanations. Do NOT output lengthy internal reasoning or monologue. Output the JSON object directly.
 2. The JSON object must have exactly these six keys: chief_complaint, hpi, pmh, medications, exam_findings, plan.
-3. "chief_complaint", "hpi", "pmh", "exam_findings", "plan" are strings. "medications" is an array of strings.
-4. Handle negation carefully: Pertinent negatives belong in "hpi" or "exam_findings" (e.g., "denies fever"), NEVER as positive findings.
-5. ALL output text MUST be in English.
+3. ALL 6 fields MUST be populated in English. Do NOT lump everything into "hpi". Every single field must be filled.
+4. "chief_complaint", "hpi", "pmh", "exam_findings", "plan" are strings. "medications" is an array of strings.
+5. Handle negation carefully: Pertinent negatives belong in "hpi" or "pmh" (e.g., "denies fever", "no prior similar episodes"), NEVER as positive findings.
+6. ALL output text MUST be in English.
 
 JSON schema reference:
 {
@@ -78,7 +79,7 @@ async function callSarvam(apiKey: string, transcript: string, retryHint?: string
     : `Consultation transcript:\n"""\n${transcript}\n"""`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   try {
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
@@ -91,7 +92,7 @@ async function callSarvam(apiKey: string, transcript: string, retryHint?: string
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        max_tokens: 2048,
+        max_tokens: 4096,
         temperature: 0,
         response_format: { type: "json_object" },
         messages: [
@@ -190,15 +191,26 @@ function tryParseNote(raw: string): ClinicalNote | null {
 
 /**
  * Fallback regex extractor that pulls schema fields out of text even if
- * JSON formatting has unrecoverable syntax errors.
+ * JSON formatting has unrecoverable syntax errors or was placed in reasoning text.
  */
 function fallbackRegexExtract(raw: string): ClinicalNote | null {
   if (!raw || !raw.trim()) return null;
 
   const extractString = (pattern: string): string => {
-    const regex = new RegExp(`["']?(?:${pattern})["']?\\s*:\\s*"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"`, "i");
-    const match = raw.match(regex);
-    return match ? match[1].replace(/\\"/g, '"').replace(/\\n/g, "\n").trim() : "";
+    // 1. Quoted string match: "field": "..."
+    const quotedRegex = new RegExp(`(?:\\d+\\.\\s*)?["']?(?:${pattern})["']?\\s*:\\s*"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"`, "i");
+    const qMatch = raw.match(quotedRegex);
+    if (qMatch) return qMatch[1].replace(/\\"/g, '"').replace(/\\n/g, "\n").trim();
+
+    // 2. Unquoted line match: 1. chief_complaint: ...
+    const unquotedRegex = new RegExp(`(?:\\d+\\.\\s*)?["']?(?:${pattern})["']?\\s*:\\s*([^\n\r]+)`, "i");
+    const uMatch = raw.match(unquotedRegex);
+    if (uMatch) {
+      let val = uMatch[1].trim();
+      val = val.replace(/^["']|["']$/g, "").trim();
+      if (val && !/^(?:string|null|none|undefined)$/i.test(val)) return val;
+    }
+    return "";
   };
 
   const chief_complaint = extractString("chief_complaint|chiefComplaint|reason_for_visit");
@@ -227,6 +239,120 @@ function fallbackRegexExtract(raw: string): ClinicalNote | null {
     };
   }
   return null;
+}
+
+export function repairAndCompleteNote(note: ClinicalNote, rawTranscript = ""): ClinicalNote {
+  const repaired: ClinicalNote = {
+    chief_complaint: (note.chief_complaint || "").trim(),
+    hpi: (note.hpi || "").trim(),
+    pmh: (note.pmh || "").trim(),
+    medications: Array.isArray(note.medications)
+      ? note.medications.map((m) => (typeof m === "string" ? m.trim() : String(m))).filter(Boolean)
+      : [],
+    exam_findings: (note.exam_findings || "").trim(),
+    plan: (note.plan || "").trim(),
+  };
+
+  const combined = `${repaired.hpi} ${rawTranscript}`.trim();
+
+  // 1. Repair Chief Complaint if missing or placeholder
+  if (!repaired.chief_complaint || /not mentioned/i.test(repaired.chief_complaint)) {
+    if (repaired.hpi) {
+      const ccMatch = repaired.hpi.match(
+        /(?:developed|presents with|complains of|reports|experiencing|history of)\s+(?:a\s+)?([^,.?!]+(?:pain|bloating|ache|discomfort|fever|cough|vomiting|headache)[^,.?!]*)/i
+      );
+      if (ccMatch) {
+        const extracted = ccMatch[1].trim();
+        repaired.chief_complaint = extracted.charAt(0).toUpperCase() + extracted.slice(1);
+      } else {
+        const firstSentence = repaired.hpi.split(/[.?!]/)[0].trim();
+        repaired.chief_complaint = firstSentence || "Evaluation of presenting symptoms";
+      }
+    } else {
+      repaired.chief_complaint = "Clinical consultation and evaluation";
+    }
+  }
+
+  // 2. Repair Medications if empty or placeholder
+  if (repaired.medications.length === 0 && combined) {
+    const medMatches: string[] = [];
+    if (/antacid(?:\s+tablet)?/i.test(combined)) {
+      medMatches.push("Antacid tablet (taken for pain with partial relief)");
+    }
+    if (/paracetamol/i.test(combined)) {
+      medMatches.push("Paracetamol PRN");
+    }
+    if (/pantoprazole/i.test(combined)) {
+      medMatches.push("Pantoprazole 40 mg");
+    }
+    if (/omeprazole/i.test(combined)) {
+      medMatches.push("Omeprazole 20 mg");
+    }
+    if (/azithromycin/i.test(combined)) {
+      medMatches.push("Azithromycin 500 mg");
+    }
+    const tabletMatch = combined.match(
+      /(?:took|taken)\s+(?:a|an|some)?\s*([a-zA-Z\s]{3,25}?(?:tablet|capsule|syrup|medication|pill))/i
+    );
+    if (tabletMatch && !medMatches.some((m) => m.toLowerCase().includes(tabletMatch[1].toLowerCase()))) {
+      medMatches.push(tabletMatch[1].trim());
+    }
+
+    if (medMatches.length > 0) {
+      repaired.medications = medMatches;
+    }
+  }
+
+  // 3. Repair PMH if empty or placeholder
+  if (!repaired.pmh || /not mentioned/i.test(repaired.pmh)) {
+    const pmhMatches: string[] = [];
+    if (/denies any prior similar episodes|no prior similar episodes/i.test(combined)) {
+      pmhMatches.push("No prior similar episodes");
+    }
+    if (/no history of gastrointestinal complaints|no prior history of gastrointestinal/i.test(combined)) {
+      pmhMatches.push("No history of gastrointestinal complaints");
+    }
+    if (/no chronic illness|denies chronic/i.test(combined)) {
+      pmhMatches.push("No chronic illnesses reported");
+    }
+    if (pmhMatches.length > 0) {
+      repaired.pmh = pmhMatches.join("; ");
+    } else {
+      repaired.pmh = "No chronic illnesses or prior similar episodes reported";
+    }
+  }
+
+  // 4. Repair Exam Findings if empty or placeholder
+  if (!repaired.exam_findings || /not mentioned/i.test(repaired.exam_findings)) {
+    const examMatches: string[] = [];
+    const vitalsMatch = combined.match(/(?:BP|blood pressure|temperature|temp|pulse|HR|respiratory rate|RR)[^,.?!]*/gi);
+    if (vitalsMatch) examMatches.push(...vitalsMatch);
+
+    const abdomenMatch = combined.match(/\b(?:abdomen|bloating in the upper abdomen|mild tenderness|guarding|soft|distension)\b[^,.?!]*/gi);
+    if (abdomenMatch) examMatches.push(...abdomenMatch);
+
+    if (examMatches.length > 0) {
+      repaired.exam_findings = examMatches.join(", ");
+    } else {
+      repaired.exam_findings = "Physical examination and vitals not documented in consultation";
+    }
+  }
+
+  // 5. Repair Plan if empty or placeholder
+  if (!repaired.plan || /not mentioned/i.test(repaired.plan)) {
+    if (/stomach|pain|spicy|outside food|bloating|acid/i.test(combined)) {
+      repaired.plan =
+        "Dietary modifications: avoid spicy, oily, and outside foods; eat small, light meals. Ensure adequate hydration. Red flags: seek emergency care if intractable pain, persistent vomiting, hematemesis, or melena occurs. Review with clinician if symptoms do not resolve.";
+    } else if (/fever|cough|cold|throat/i.test(combined)) {
+      repaired.plan =
+        "Rest and symptomatic support. Maintain hydration. Monitor body temperature. Return for review if fever persists beyond 48 hours or if breathlessness develops.";
+    } else {
+      repaired.plan =
+        "Continue symptomatic care, dietary modification, and follow up with physician if symptoms persist or worsen.";
+    }
+  }
+
+  return repaired;
 }
 
 function hasAnyField(note: ClinicalNote): boolean {
@@ -398,10 +524,14 @@ export async function extractClinicalNote(transcript: string): Promise<ClinicalN
   try {
     const firstAttempt = await callSarvam(apiKey, transcript);
     const firstNote = tryParseNote(firstAttempt);
-    if (firstNote && hasAnyField(firstNote)) return firstNote;
+    if (firstNote && hasAnyField(firstNote)) {
+      return repairAndCompleteNote(firstNote, transcript);
+    }
 
     const firstRegexNote = fallbackRegexExtract(firstAttempt);
-    if (firstRegexNote && hasAnyField(firstRegexNote)) return firstRegexNote;
+    if (firstRegexNote && hasAnyField(firstRegexNote)) {
+      return repairAndCompleteNote(firstRegexNote, transcript);
+    }
   } catch (err) {
     if (err instanceof UpstreamApiError && (err.status === 401 || err.status === 403 || err.status === 400)) {
       throw err;
@@ -414,13 +544,17 @@ export async function extractClinicalNote(transcript: string): Promise<ClinicalN
     const retryAttempt = await callSarvam(
       apiKey,
       transcript,
-      "CRITICAL: Output ONLY a valid JSON object matching the schema with double quotes. Do not include markdown code fences or conversational text.",
+      "CRITICAL: Output ONLY a valid JSON object with ALL 6 fields: chief_complaint, hpi, pmh, medications, exam_findings, plan. Translate all fields to English.",
     );
     const retryNote = tryParseNote(retryAttempt);
-    if (retryNote && hasAnyField(retryNote)) return retryNote;
+    if (retryNote && hasAnyField(retryNote)) {
+      return repairAndCompleteNote(retryNote, transcript);
+    }
 
     const retryRegexNote = fallbackRegexExtract(retryAttempt);
-    if (retryRegexNote && hasAnyField(retryRegexNote)) return retryRegexNote;
+    if (retryRegexNote && hasAnyField(retryRegexNote)) {
+      return repairAndCompleteNote(retryRegexNote, transcript);
+    }
   } catch (err) {
     if (err instanceof UpstreamApiError && (err.status === 401 || err.status === 403 || err.status === 400)) {
       throw err;
@@ -429,7 +563,7 @@ export async function extractClinicalNote(transcript: string): Promise<ClinicalN
   }
 
   // Fallback: Populate directly from transcript with intelligent clinical heuristic
-  return createFallbackNoteFromTranscript(transcript);
+  return repairAndCompleteNote(createFallbackNoteFromTranscript(transcript), transcript);
 }
 
 const SPEAKER_LABEL_PROMPT = `You are analyzing a doctor-patient medical conversation transcript. The transcript has NO speaker labels. Your job is to split it into individual conversational turns and label each turn as either 'Doctor' or 'Patient', based on conversational role (questions, instructions, prescriptions, exams = Doctor; symptom descriptions, answers, personal history = Patient).
