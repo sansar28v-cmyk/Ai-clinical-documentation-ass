@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         full_name: string;
         username: string;
         user_id: number;
-      }>("/auth/supabase-sync", {
+      }>("/api/auth/supabase-sync", {
         method: "POST",
         body: { email, fullName },
       });
@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: string;
         user_id: number;
         picture?: string;
-      }>("/auth/google", {
+      }>("/api/auth/google", {
         method: "POST",
         body: { credential },
       });
