@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (username: string, password: string) => Promise<User>;
+  loginWithGoogle: (credential: string) => Promise<User>;
   signup: (username: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
@@ -24,6 +25,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const loginWithGoogle = async (credential: string): Promise<User> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiRequest<{
+        access_token: string;
+        token_type: string;
+        role?: string;
+        full_name: string;
+        username: string;
+        user_id: number;
+        picture?: string;
+      }>("/auth/google", {
+        method: "POST",
+        body: { credential },
+      });
+
+      const loggedUser: User = {
+        id: data.user_id,
+        username: data.username,
+        full_name: data.full_name,
+        role: "doctor",
+      };
+
+      setToken(data.access_token);
+      setUser(loggedUser);
+      return loggedUser;
+    } catch (err: any) {
+      const msg = err.message || "Google authentication failed";
+      setError(msg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const login = async (username: string, password: string): Promise<User> => {
     setLoading(true);
@@ -125,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         error,
         login,
+        loginWithGoogle,
         signup,
         logout,
         clearError,

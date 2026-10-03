@@ -208,6 +208,25 @@ export function createUser(username: string, password: string, fullName: string)
   return newUser;
 }
 
+export function findOrCreateGoogleUser(email: string, fullName: string): StoredUser {
+  initStore();
+  const clean = email.trim().toLowerCase();
+  let user = globalForStore._users?.find((u) => u.username.toLowerCase() === clean);
+  if (!user) {
+    user = {
+      id: globalForStore._userIdCounter!++,
+      username: clean,
+      passwordHash: hashPassword(crypto.randomBytes(24).toString("hex")),
+      fullName: fullName.trim() || "Doctor",
+      role: "doctor",
+      createdAt: new Date().toISOString(),
+    };
+    globalForStore._users!.push(user);
+    saveStoreToFile();
+  }
+  return user;
+}
+
 export function createConsultation(
   doctorId: number,
   doctorName: string,
