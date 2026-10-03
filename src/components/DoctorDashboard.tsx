@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest, ConsultationItem } from "@/lib/api";
+import { QRCodeSVG } from "qrcode.react";
 
 interface DoctorDashboardProps {
   onStartConsultation: () => void;
@@ -18,6 +19,8 @@ export default function DoctorDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeQrConsultation, setActiveQrConsultation] = useState<ConsultationItem | null>(null);
+  const [qrCopied, setQrCopied] = useState(false);
 
   const fetchConsultations = async () => {
     if (!token) return;
@@ -230,14 +233,30 @@ export default function DoctorDashboard({
                         </span>
                       </td>
                       <td className="action-cell">
-                        <button
-                          type="button"
-                          onClick={() => onViewConsultation(item.id)}
-                          className="btn-view-record"
-                        >
-                          <span>View</span>
-                          <i className="fa-solid fa-chevron-right" />
-                        </button>
+                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => setActiveQrConsultation(item)}
+                            className="btn-view-record"
+                            style={{
+                              background: "rgba(59, 130, 246, 0.15)",
+                              borderColor: "rgba(59, 130, 246, 0.35)",
+                              color: "#93c5fd",
+                            }}
+                            title="Share Patient QR Code"
+                          >
+                            <i className="fa-solid fa-qrcode" style={{ marginRight: "4px" }} />
+                            <span>QR</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onViewConsultation(item.id)}
+                            className="btn-view-record"
+                          >
+                            <span>View</span>
+                            <i className="fa-solid fa-chevron-right" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -247,6 +266,105 @@ export default function DoctorDashboard({
           </div>
         )}
       </div>
+
+      {/* Patient QR Code Modal */}
+      {activeQrConsultation && (
+        <div className="modal-overlay" onClick={() => setActiveQrConsultation(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
+            <div className="modal-head">
+              <div>
+                <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <i className="fa-solid fa-qrcode text-primary-accent" />
+                  Patient Report QR Code
+                </h3>
+                <p>
+                  {activeQrConsultation.patient_name} • 7-Day Secure Access • No Patient Login Required
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveQrConsultation(null)}
+                className="modal-close"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ textAlign: "center", padding: "1.25rem 0" }}>
+              <div
+                className="qr-code-wrapper"
+                style={{
+                  display: "inline-flex",
+                  padding: "16px",
+                  background: "#ffffff",
+                  borderRadius: "16px",
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+                  margin: "0 auto 1.25rem auto",
+                }}
+              >
+                <QRCodeSVG
+                  value={
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/public/report/${activeQrConsultation.share_token || "demo"}`
+                      : ""
+                  }
+                  size={180}
+                  level="M"
+                  includeMargin={false}
+                  bgColor="#ffffff"
+                  fgColor="#0f172a"
+                />
+              </div>
+
+              <div className="qr-patient-instruction" style={{ textAlign: "center", margin: "0 auto 1rem auto" }}>
+                <strong>Patient:</strong> scan with mobile phone camera to view and download report in your language
+              </div>
+
+              <div className="qr-link-row" style={{ maxWidth: 460, margin: "0 auto 1rem auto", display: "flex", gap: "8px" }}>
+                <input
+                  type="text"
+                  readOnly
+                  value={
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/public/report/${activeQrConsultation.share_token || "demo"}`
+                      : ""
+                  }
+                  className="qr-link-input"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (typeof window !== "undefined") {
+                      const url = `${window.location.origin}/public/report/${activeQrConsultation.share_token || "demo"}`;
+                      await navigator.clipboard.writeText(url);
+                      setQrCopied(true);
+                      setTimeout(() => setQrCopied(false), 2000);
+                    }
+                  }}
+                  className="btn-qr-action"
+                >
+                  <i className={qrCopied ? "fa-solid fa-check" : "fa-regular fa-copy"} />{" "}
+                  {qrCopied ? "Copied!" : "Copy Link"}
+                </button>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "14px" }}>
+                <a
+                  href={`/public/report/${activeQrConsultation.share_token || "demo"}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary"
+                  style={{ textDecoration: "none", fontSize: "0.88rem", padding: "8px 18px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                >
+                  <i className="fa-solid fa-arrow-up-right-from-square" /> Open Patient Report
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

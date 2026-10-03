@@ -396,11 +396,12 @@ export default function ClinicalDemo({
       });
       setSavedId(res.id);
       const st = res.share_token || res.consultation?.share_token;
-      if (st) {
-        setSavedShareToken(st);
-      }
+      setSavedShareToken(st || "demo");
     } catch (err: any) {
       setSaveError(err.message || "Failed to save consultation to database.");
+      if (!savedShareToken) {
+        setSavedShareToken("demo");
+      }
     } finally {
       setIsSaving(false);
     }

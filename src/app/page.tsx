@@ -143,6 +143,19 @@ export default function HomePage() {
                       How It Works
                     </a>
                   </li>
+                  <li>
+                    <a
+                      href="/public/report/demo"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="nav-link"
+                      title="Experience the multilingual patient report portal (scannable via QR code)"
+                      style={{ color: "#38bdf8", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                    >
+                      <i className="fa-solid fa-qrcode" />
+                      <span>Patient QR Demo</span>
+                    </a>
+                  </li>
                 </>
               )}
             </ul>
