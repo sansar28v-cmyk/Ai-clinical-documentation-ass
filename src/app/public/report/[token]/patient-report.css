@@ -416,3 +416,82 @@
   animation: spin 0.8s linear infinite;
   margin: 0 auto 1.25rem auto;
 }
+
+/* Print Specific Rules for Patient Portal */
+@media print {
+  body, .patient-report-page {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+  }
+
+  .action-controls-card,
+  .privacy-badge,
+  .footer-meta {
+    display: none !important;
+  }
+
+  .patient-container {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .patient-header {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border: none !important;
+    border-radius: 6px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .patient-title-group h1,
+  .patient-title-group p {
+    color: #ffffff !important;
+  }
+
+  .patient-meta-grid {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .meta-label {
+    color: #1e293b !important;
+  }
+
+  .meta-value {
+    color: #334155 !important;
+  }
+
+  .report-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 16px !important;
+  }
+
+  .report-card-head {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .report-card-title {
+    color: #0f172a !important;
+  }
+
+  .report-card-body,
+  .med-pill-item {
+    color: #334155 !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
+  }
+}

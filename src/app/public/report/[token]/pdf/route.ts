@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConsultationByShareToken } from "@/lib/server-store";
-import { generateReportPdf } from "@/lib/pdf-generator";
+import { generateReportPdf, generateReportPrintableHtml } from "@/lib/pdf-generator";
 import { translateClinicalNote, SUPPORTED_LANGUAGES } from "@/lib/translate";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +48,35 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     );
     const langName = langObj ? `${langObj.name} (${langObj.nativeName})` : langCode;
 
-    const pdfBytes = generateReportPdf(noteToExport, {
+    // If caller specifically requested binary raw_pdf format, return jsPDF binary
+    if (url.searchParams.get("format") === "raw_pdf") {
+      const pdfBytes = generateReportPdf(noteToExport, {
+        patientName: consultation.patient_name || "Patient",
+        doctorName: consultation.doctor_name || "Attending Physician",
+        createdAt: consultation.created_at,
+        languageCode: langCode,
+        languageName: langName,
+      });
+
+      const safePatient = (consultation.patient_name || "patient")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-");
+      const filename = `clinical-report-${safePatient}-${langCode}.pdf`;
+
+      return new NextResponse(Buffer.from(pdfBytes), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "no-store, max-age=0",
+        },
+      });
+    }
+
+    // Default: Return high-fidelity printable HTML document with full Google Fonts
+    // and native Unicode Indic script layout (Malayalam, Tamil, Hindi, Telugu, etc.)
+    const html = generateReportPrintableHtml(noteToExport, {
       patientName: consultation.patient_name || "Patient",
       doctorName: consultation.doctor_name || "Attending Physician",
       createdAt: consultation.created_at,
@@ -56,17 +84,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       languageName: langName,
     });
 
-    const safePatient = (consultation.patient_name || "patient")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "-")
-      .replace(/-+/g, "-");
-    const filename = `clinical-report-${safePatient}-${langCode}.pdf`;
-
-    return new NextResponse(Buffer.from(pdfBytes), {
+    return new NextResponse(html, {
       status: 200,
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store, max-age=0",
       },
     });
