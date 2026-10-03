@@ -68,7 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      await apiRequest("/signup", {
+      const data = await apiRequest<{
+        access_token?: string;
+        token_type?: string;
+        user?: {
+          id: number;
+          username: string;
+          full_name: string;
+          role: string;
+        };
+      }>("/signup", {
         method: "POST",
         body: {
           username,
@@ -76,6 +85,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           full_name: fullName,
         },
       });
+
+      if (data.access_token && data.user) {
+        const loggedUser: User = {
+          id: data.user.id,
+          username: data.user.username,
+          full_name: data.user.full_name,
+          role: "doctor",
+        };
+        setToken(data.access_token);
+        setUser(loggedUser);
+      }
     } catch (err: any) {
       const msg = err.message || "Signup failed. Please try again.";
       setError(msg);

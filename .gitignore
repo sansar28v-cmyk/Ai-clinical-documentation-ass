@@ -30,4 +30,5 @@ __pycache__/
 *$py.class
 *.db
 *.sqlite3
+clinical_store.json
 

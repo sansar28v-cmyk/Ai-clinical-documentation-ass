@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUser, getUserByUsername } from "@/lib/server-store";
+import { createUser, getUserByUsername, createToken } from "@/lib/server-store";
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,9 +38,22 @@ export async function POST(req: NextRequest) {
 
     const user = createUser(cleanUsername, password, full_name);
 
+    const token = createToken({
+      sub: user.username,
+      user_id: user.id,
+      role: "doctor",
+      full_name: user.fullName,
+    });
+
     return NextResponse.json(
       {
         message: "Doctor registered successfully",
+        access_token: token,
+        token_type: "bearer",
+        role: "doctor",
+        full_name: user.fullName,
+        username: user.username,
+        user_id: user.id,
         user: {
           id: user.id,
           username: user.username,

@@ -55,8 +55,20 @@ async def signup(req: SignupRequest):
             full_name=req.full_name,
             role="doctor",
         )
+        token = create_access_token({
+            "sub": user["username"],
+            "user_id": user["id"],
+            "role": "doctor",
+            "full_name": user["full_name"],
+        })
         return {
             "message": "Doctor registered successfully",
+            "access_token": token,
+            "token_type": "bearer",
+            "role": "doctor",
+            "full_name": user["full_name"],
+            "username": user["username"],
+            "user_id": user["id"],
             "user": {
                 "id": user["id"],
                 "username": user["username"],

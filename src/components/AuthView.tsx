@@ -63,8 +63,9 @@ export default function AuthView({
       }
       try {
         await signup(username, password, fullName);
-        setSignupSuccessMsg(`Account created for ${fullName}! Please sign in now.`);
-        setMode("login");
+        if (onSuccess) {
+          onSuccess();
+        }
       } catch (err: any) {
         setLocalError(err.message || "Failed to create account. Username may be taken.");
       }
@@ -104,6 +105,25 @@ export default function AuthView({
               ? "Sign in with your secure physician credentials"
               : "Create a doctor account to document and manage patient consultations"}
           </p>
+        </div>
+
+        <div className="auth-mode-tabs">
+          <button
+            type="button"
+            className={`auth-mode-tab ${mode === "login" ? "active" : ""}`}
+            onClick={() => handleModeSwitch("login")}
+          >
+            <i className="fa-solid fa-right-to-bracket" />
+            <span>Sign In</span>
+          </button>
+          <button
+            type="button"
+            className={`auth-mode-tab ${mode === "signup" ? "active" : ""}`}
+            onClick={() => handleModeSwitch("signup")}
+          >
+            <i className="fa-solid fa-user-plus" />
+            <span>Register Account</span>
+          </button>
         </div>
 
         {signupSuccessMsg && (
