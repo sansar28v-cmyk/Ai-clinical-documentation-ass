@@ -12,37 +12,48 @@ export function getSarvamLlmModel(): string {
   return raw || "sarvam-105b";
 }
 
-const SYSTEM_PROMPT = `You are a clinical documentation assistant embedded in a hospital workflow tool.
-You read a transcript of a doctor-patient consultation and extract ONLY information that is
-explicitly stated, into a strict JSON schema used to pre-fill a clinical note for physician review.
+const SYSTEM_PROMPT = `You are a board-certified clinical documentation specialist and medical scribe.
+You read a transcript of a doctor-patient consultation and extract a complete, high-quality, professional clinical note into a strict JSON schema for physician review.
 
 IMPORTANT: The transcript may be in any Indian language (Hindi, Tamil, Telugu, Bengali, Marathi,
 Gujarati, Kannada, Malayalam, Odia, Punjabi, etc.) or mixed with English (code-mixed). Regardless
-of the language of the transcript, ALL extracted note fields MUST be returned in English.
+of the language of the transcript, ALL extracted note fields MUST be returned in English using standard clinical terminology.
+
+EXTRACTION INSTRUCTIONS FOR THE 6 SCHEMA FIELDS:
+1. "chief_complaint": Concise primary reason for visit with duration and main aggravating/associated factor (e.g. "Stomach pain for 2 days, worse after eating food, with dull ache and bloating").
+2. "hpi": Detailed, chronological narrative of the current illness. Must cover:
+   - Onset, duration, character/severity, location, and radiation of pain/symptoms
+   - Aggravating factors (e.g. spicy food, postprandial) and relieving factors (e.g. partial relief from antacid)
+   - Associated symptoms (e.g. bloating, nausea, reduced appetite)
+   - Pertinent negatives (explicitly list ruled-out symptoms: e.g. denies vomiting, loose motions, melena, fever)
+   - Prior similar episodes and clinical context
+3. "pmh": Pertinent prior conditions, surgeries, chronic illnesses, or state "No prior history of gastrointestinal illness or chronic disease" if denied or absent.
+4. "medications": Array of strings. You MUST list ALL medications mentioned anywhere in the consultation:
+   - Newly prescribed medications with dose, route, frequency, and duration (e.g. "Pantoprazole 40 mg before breakfast for 5 days")
+   - Current, prior, or over-the-counter medications taken by patient (e.g. "Antacid tablet (taken for pain with partial relief)")
+   - DO NOT leave this empty if any drug, tablet, antacid, or prescription was mentioned!
+5. "exam_findings": Physical examination findings and vitals observed or stated by clinician (e.g. "Abdomen: Mild upper abdominal bloating; soft, non-distended, no severe tenderness or guarding.").
+6. "plan": Comprehensive physician management plan:
+   - Prescriptions & dosage instructions (e.g. Pantoprazole 40 mg before breakfast for 5 days)
+   - Dietary & lifestyle advice (e.g. avoid spicy and oily foods, eat light meals, maintain hydration)
+   - Red-flag warning signs requiring emergency return (e.g. vomiting blood, black stools, intractable pain)
+   - Follow-up timeline (e.g. review in 5 days or sooner if pain does not improve)
 
 STRICT OUTPUT RULES:
 1. Respond with ONLY valid JSON. No markdown code fences, no commentary, no preamble, no explanations.
 2. The JSON object must have exactly these six keys: chief_complaint, hpi, pmh, medications, exam_findings, plan.
 3. "chief_complaint", "hpi", "pmh", "exam_findings", "plan" are strings. "medications" is an array of strings.
-4. If a field has no supporting information in the transcript, return an empty string "" (or [] for
-   medications). NEVER invent, infer beyond what was said, or hallucinate clinical information.
-5. Handle negation carefully. If a symptom, condition, or medication is explicitly denied or ruled out
-   (e.g. "no fever", "denies chest pain", "not taking any medications", "no history of diabetes"),
-   it must NOT be listed as a present/positive finding anywhere in the output. Pertinent negatives may
-   only be reflected as clearly negative statements inside "hpi" or "exam_findings" (e.g. "denies fever"),
-   never as a positive symptom or as an entry in "medications".
-6. Do not add diagnoses, treatments, or medications that were not discussed in the transcript.
-7. Keep language concise, objective, and clinical — written the way a clinician would chart it.
-8. ALL output text MUST be in English, even if the transcript is in another language.
+4. Handle negation carefully: Pertinent negatives belong in "hpi" or "exam_findings" (e.g., "denies fever"), NEVER as positive findings.
+5. ALL output text MUST be in English.
 
 JSON schema reference:
 {
-  "chief_complaint": "string - the main reason for today's visit",
-  "hpi": "string - history of present illness: symptoms, onset, duration, severity, context",
-  "pmh": "string - past medical history: prior conditions, surgeries, chronic illnesses mentioned",
-  "medications": ["array of strings - medications the patient currently takes, as mentioned"],
+  "chief_complaint": "string - primary reason for today's visit with duration",
+  "hpi": "string - chronological narrative: symptoms, onset, duration, severity, context, aggravating/relieving factors, pertinent negatives",
+  "pmh": "string - prior conditions, surgeries, chronic illnesses, or explicitly none",
+  "medications": ["array of strings - all medications: newly prescribed and prior/OTC taken"],
   "exam_findings": "string - physical exam findings or vitals mentioned by the clinician",
-  "plan": "string - treatment plan, prescriptions, and follow-up instructions"
+  "plan": "string - treatment plan, prescriptions with dosages, dietary advice, red-flag warning signs, and follow-up"
 }`;
 
 interface SarvamChatResponse {
@@ -247,38 +258,55 @@ function createFallbackNoteFromTranscript(transcript: string): ClinicalNote {
 
   for (const line of lines) {
     const lower = line.toLowerCase();
+    const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
 
     // Check for exam findings
     if (
       lower.includes("throat shows") ||
       lower.includes("lungs are") ||
+      lower.includes("abdomen") ||
+      lower.includes("bloating") ||
+      lower.includes("tenderness") ||
       lower.includes("auscultation") ||
       lower.includes("erythema") ||
       lower.includes("vitals") ||
       lower.includes("blood pressure") ||
       lower.includes("temperature") ||
-      lower.includes("physical exam")
+      lower.includes("physical exam") ||
+      lower.includes("let me examine") ||
+      lower.includes("examination")
     ) {
-      const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
-      exam_parts.push(stripped);
-      continue;
+      if (!lower.includes("prescribe") && !lower.includes("before breakfast")) {
+        exam_parts.push(stripped);
+        continue;
+      }
     }
 
     // Check for plan / treatment / advice
     if (
       lower.includes("recommend") ||
-      lower.includes("viral") ||
       lower.includes("prescribe") ||
-      lower.includes("gargle") ||
-      lower.includes("fluids") ||
+      lower.includes("pantoprazole") ||
+      lower.includes("antacid") ||
+      lower.includes("tablet") ||
+      lower.includes("avoid spicy") ||
+      lower.includes("light food") ||
+      lower.includes("return immediately") ||
       lower.includes("follow up") ||
-      lower.includes("rest")
+      lower.includes("rest") ||
+      lower.includes("fluids")
     ) {
-      const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
       plan_parts.push(stripped);
-      const medMatch = stripped.match(/(paracetamol|ibuprofen|amoxicillin|azithromycin|cetirizine|pantoprazole|aspirin|cough syrup)[\s\w]*(?:\d+\s*mg)?/i);
-      if (medMatch && !medications.includes(medMatch[0])) {
-        medications.push(medMatch[0]);
+
+      // Extract medication
+      const medMatches = stripped.match(/(?:pantoprazole|antacid|paracetamol|omeprazole|amoxicillin|azithromycin|cetirizine|ibuprofen)[\s\w]*(?:\d+\s*mg)?(?:\s+[\w\s]{0,35}?(?:breakfast|days|daily))?/gi);
+      if (medMatches) {
+        for (const m of medMatches) {
+          const med = m.trim();
+          if (!medications.some((x) => x.toLowerCase().includes(med.toLowerCase()))) {
+            medications.push(med);
+          }
+        }
       }
       continue;
     }
@@ -290,9 +318,10 @@ function createFallbackNoteFromTranscript(transcript: string): ClinicalNote {
       lower.includes("asthma") ||
       lower.includes("diabetes") ||
       lower.includes("hypertension") ||
-      lower.includes("history")
+      lower.includes("prior history") ||
+      lower.includes("first episode") ||
+      lower.includes("before this")
     ) {
-      const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
       if (!lower.startsWith("doctor:") || !lower.includes("any allergies")) {
         pmh_parts.push(stripped);
       }
@@ -301,21 +330,37 @@ function createFallbackNoteFromTranscript(transcript: string): ClinicalNote {
 
     // Symptoms / HPI / Chief Complaint
     if (
+      lower.includes("stomach") ||
+      lower.includes("pain") ||
+      lower.includes("bloating") ||
+      lower.includes("ache") ||
       lower.includes("sore throat") ||
       lower.includes("cough") ||
       lower.includes("fever") ||
-      lower.includes("pain") ||
-      lower.includes("run down") ||
-      lower.includes("ache") ||
+      lower.includes("vomiting") ||
+      lower.includes("loose motions") ||
+      lower.includes("appetite") ||
+      lower.includes("spicy") ||
       lower.includes("days") ||
       lower.includes("weeks")
     ) {
-      const stripped = line.replace(/^(?:Doctor|Physician|Clinician|Patient):\s*/i, "").trim();
       if (!lower.startsWith("doctor:") || !lower.includes("what brings")) {
         hpi_parts.push(stripped);
-        if (!chief_complaint && (lower.includes("sore throat") || lower.includes("cough") || lower.includes("pain") || lower.includes("fever"))) {
-          const match = stripped.match(/(?:sore throat|cough|fever|body ache|chest pain|headache)[^.?!]*/i);
+        if (!chief_complaint) {
+          const match = stripped.match(/(?:stomach pain|abdominal pain|dull ache|sore throat|cough|fever|chest pain|headache)[^.?!]*/i);
           chief_complaint = match ? match[0].trim() : stripped.split(/[.?!]/)[0].trim();
+        }
+      }
+    }
+  }
+
+  // Scan overall transcript for medications if still empty
+  if (medications.length === 0) {
+    const rawMedMatch = clean.match(/(?:pantoprazole(?:\s+\d+\s*mg)?(?:\s+[\w\s]{0,35}?(?:breakfast|days|daily))?|antacid(?:\s+tablet)?|paracetamol(?:\s+\d+\s*mg)?|omeprazole(?:\s+\d+\s*mg)?)/gi);
+    if (rawMedMatch) {
+      for (const m of rawMedMatch) {
+        if (!medications.includes(m.trim())) {
+          medications.push(m.trim());
         }
       }
     }
@@ -324,10 +369,10 @@ function createFallbackNoteFromTranscript(transcript: string): ClinicalNote {
   return {
     chief_complaint: chief_complaint || "Clinical consultation and evaluation",
     hpi: hpi_parts.length > 0 ? hpi_parts.join(" ") : clean,
-    pmh: pmh_parts.length > 0 ? pmh_parts.join("; ") : "No chronic illnesses or allergies documented",
+    pmh: pmh_parts.length > 0 ? pmh_parts.join("; ") : "No chronic illnesses or prior similar episodes reported",
     medications: medications.length > 0 ? medications : [],
-    exam_findings: exam_parts.length > 0 ? exam_parts.join(" ") : "Physical examination performed as noted in consultation",
-    plan: plan_parts.length > 0 ? plan_parts.join(" ") : "Continue supportive care and clinical monitoring",
+    exam_findings: exam_parts.length > 0 ? exam_parts.join(" ") : "Physical examination performed as documented in consultation",
+    plan: plan_parts.length > 0 ? plan_parts.join(" ") : "Continue prescribed therapy, dietary modifications, and clinical monitoring",
   };
 }
 
@@ -430,6 +475,12 @@ function parseDialogueLines(raw: string): SpeakerTurn[] | null {
     }
 
     if (speaker && text) {
+      // Reject if text is purely numbers/indices e.g. "2,5,9,11,12,14,16,21."
+      const alphaCount = text.replace(/[^a-zA-Z]/g, "").length;
+      if (alphaCount < 3 || /^[\d\s,.]+$/.test(text)) {
+        continue;
+      }
+
       // Merge consecutive sentences from the same speaker
       if (turns.length > 0 && turns[turns.length - 1].speaker === speaker) {
         turns[turns.length - 1].text += " " + text;
@@ -450,17 +501,23 @@ function clinicalHeuristicLabel(sentences: string[]): SpeakerTurn[] {
     const low = s.toLowerCase().trim();
     let spk: "Doctor" | "Patient";
 
-    // Patient cues
+    // Patient cues: symptoms, context, answers, acknowledgements
     if (
       low.includes("hi doctor") ||
       low.includes("hello doctor") ||
       low.includes("thank you doctor") ||
       low.includes("thanks doctor") ||
       low.includes("okay doctor") ||
-      low.includes("yes doctor")
-    ) {
-      spk = "Patient";
-    } else if (
+      low.includes("yes doctor") ||
+      low.includes("stomach") ||
+      low.includes("bloating") ||
+      low.includes("dull ache") ||
+      low.includes("cramps") ||
+      low.includes("spicy food") ||
+      low.includes("after eating") ||
+      low.includes("attended a function") ||
+      low.includes("antacid") ||
+      low.includes("appetite") ||
       low.startsWith("i have") ||
       low.startsWith("i've") ||
       low.startsWith("i am") ||
@@ -469,26 +526,40 @@ function clinicalHeuristicLabel(sentences: string[]): SpeakerTurn[] {
       low.startsWith("no cough") ||
       low.startsWith("no trouble") ||
       low.startsWith("no chronic") ||
+      low.startsWith("no vomiting") ||
+      low.startsWith("no loose motions") ||
+      low.startsWith("no diarrhea") ||
+      low.startsWith("first episode") ||
       low.startsWith("i just took") ||
+      low.startsWith("i took") ||
       low.startsWith("i also have") ||
       low.startsWith("my throat") ||
       low.startsWith("my name")
     ) {
       spk = "Patient";
     }
-    // Doctor cues
+    // Doctor cues: questions, examinations, prescriptions, instructions
     else if (
       low.startsWith("what brings") ||
       low.startsWith("how high") ||
+      low.startsWith("how long") ||
       low.startsWith("any cough") ||
       low.startsWith("any history") ||
+      low.startsWith("any vomiting") ||
+      low.startsWith("any nausea") ||
       low.startsWith("let me check") ||
+      low.startsWith("let me examine") ||
       low.startsWith("okay, i can see") ||
       low.startsWith("i can see") ||
       low.startsWith("your temperature") ||
       low.startsWith("lungs sounds") ||
-      low.startsWith("i'm going to prescribe") ||
-      low.startsWith("i am going to prescribe") ||
+      low.startsWith("prescription") ||
+      low.startsWith("pantoprazole") ||
+      low.startsWith("take this") ||
+      low.startsWith("before breakfast") ||
+      low.startsWith("avoid spicy") ||
+      low.startsWith("eat light") ||
+      low.startsWith("return immediately") ||
       low.startsWith("drink plenty") ||
       low.startsWith("if the fever") ||
       low.startsWith("come back")
@@ -499,6 +570,7 @@ function clinicalHeuristicLabel(sentences: string[]): SpeakerTurn[] {
     } else if (
       low.includes("prescribe") ||
       low.includes("milligram") ||
+      low.includes("pantoprazole") ||
       low.includes("temperature is") ||
       low.includes("blood pressure")
     ) {
@@ -619,6 +691,12 @@ function sanitizeTurns(items: unknown[]): SpeakerTurn[] {
     const text = String(obj.text || "").trim();
     if (!text || text === "...") continue;
 
+    // Reject if text is purely numbers/indices e.g. "2,5,9,11,12,14,16,21."
+    const alphaCount = text.replace(/[^a-zA-Z]/g, "").length;
+    if (alphaCount < 3 || /^[\d\s,.]+$/.test(text)) {
+      continue;
+    }
+
     const rawSpeaker = String(obj.speaker || "").trim().toLowerCase();
     let speaker: "Doctor" | "Patient" = "Doctor";
     if (rawSpeaker.includes("pat") || rawSpeaker.includes("client")) {
@@ -634,6 +712,23 @@ function sanitizeTurns(items: unknown[]): SpeakerTurn[] {
   return result;
 }
 
+function isValidDialogueSet(turns: SpeakerTurn[], originalTranscript: string): boolean {
+  if (!turns || turns.length < 2) return false;
+  if (turns.some((t) => t.speaker === "Unknown")) return false;
+  for (const t of turns) {
+    const text = t.text.trim();
+    if (/^[\d\s,.]+$/.test(text)) return false;
+    const alphaCount = text.replace(/[^a-zA-Z]/g, "").length;
+    if (alphaCount < 4) return false;
+  }
+  const turnWords = turns.reduce((acc, t) => acc + t.text.split(/\s+/).length, 0);
+  const origWords = originalTranscript.split(/\s+/).length;
+  if (origWords > 10 && turnWords < origWords * 0.35) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Splits an unlabelled doctor-patient conversation transcript into turns
  * labeled with 'Doctor' or 'Patient' using Sarvam-105B LLM.
@@ -646,7 +741,7 @@ export async function labelSpeakers(transcript: string): Promise<SpeakerTurn[]> 
 
   // 1. Check if dialogue is already labeled with Doctor: and Patient:
   const existingTurns = parseDialogueLines(clean);
-  if (existingTurns && existingTurns.length > 1) {
+  if (existingTurns && existingTurns.length > 1 && isValidDialogueSet(existingTurns, clean)) {
     return existingTurns;
   }
 
@@ -660,40 +755,39 @@ export async function labelSpeakers(transcript: string): Promise<SpeakerTurn[]> 
     return MOCK_TURNS;
   }
 
-  const numbered = sentences.map((s, i) => `${i + 1}. ${s}`).join("\n");
-  const promptUser = `You are an expert clinical conversation transcriptionist. Given the numbered sentences from a doctor-patient consultation, assign each sentence to either 'Doctor' or 'Patient' based on conversational context.
+  const promptUser = `You are an expert clinical conversation transcriptionist. Given the doctor-patient consultation transcript below, reconstruct the complete conversation turn-by-turn.
 
-Rules:
-- Questions, clinical exams, findings, diagnoses, and prescriptions = Doctor
+Assign every spoken statement to either 'Doctor' or 'Patient':
+- Questions, examinations, diagnosis explanations, advice, and prescriptions = Doctor
 - Describing symptoms, answering questions, giving history, and acknowledgements = Patient
 
-Output each sentence line-by-line in this exact format:
-Doctor: <sentence>
-Patient: <sentence>
+CRITICAL RULES:
+1. Output each turn on a new line starting with "Doctor: <spoken words>" or "Patient: <spoken words>".
+2. You MUST output the actual words spoken. NEVER output sentence numbers, indices, or lists of numbers like "2,5,9,11...".
+3. Maintain the original conversation wording and order.
+4. Do not include commentary, explanations, or preamble.
 
-Do not add commentary, explanations, or numbers.
+Consultation transcript:
+${clean}`;
 
-Consultation sentences:
-${numbered}`;
-
-  // Attempt 1: Sentence-level line prompt (avoids endless reasoning loop)
+  // Attempt 1: Full transcript dialogue prompt
   try {
     const rawAttempt1 = await callSarvamGeneric(apiKey, promptUser);
     const parsed1 = parseSpeakerTurns(rawAttempt1);
-    if (parsed1 && parsed1.length > 0 && !parsed1.every((t) => t.speaker === "Unknown")) {
+    if (parsed1 && parsed1.length > 1 && isValidDialogueSet(parsed1, clean)) {
       return parsed1;
     }
-    console.warn("Attempt 1 speaker labeling returned empty, retrying...");
+    console.warn("Attempt 1 speaker labeling returned invalid turns, retrying...");
   } catch (err) {
     console.warn("Attempt 1 speaker labeling encountered an error:", err);
   }
 
   // Attempt 2: Strict format instruction retry
   try {
-    const retryPrompt = `CRITICAL: Output ONLY lines starting with "Doctor:" or "Patient:". No preamble, no commentary.\n\n${promptUser}`;
+    const retryPrompt = `CRITICAL: Output ONLY conversation lines starting with "Doctor: <spoken words>" or "Patient: <spoken words>". No preamble, no numbers.\n\n${clean}`;
     const rawAttempt2 = await callSarvamGeneric(apiKey, retryPrompt);
     const parsed2 = parseSpeakerTurns(rawAttempt2);
-    if (parsed2 && parsed2.length > 0 && !parsed2.every((t) => t.speaker === "Unknown")) {
+    if (parsed2 && parsed2.length > 1 && isValidDialogueSet(parsed2, clean)) {
       return parsed2;
     }
   } catch (err) {

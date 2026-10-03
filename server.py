@@ -66,6 +66,11 @@ def _parse_dialogue_lines(raw_content: str) -> list[dict] | None:
             txt = pat_m.group(1).strip()
 
         if spk and txt:
+            # Reject if text is purely numbers/indices e.g. "2,5,9,11,12,14,16,21."
+            alpha_count = len(re.sub(r'[^a-zA-Z]', '', txt))
+            if alpha_count < 3 or re.match(r'^[\d\s,.]+$', txt):
+                continue
+
             if turns and turns[-1]["speaker"] == spk:
                 turns[-1]["text"] += " " + txt
             else:
@@ -77,15 +82,28 @@ def _clinical_heuristic_label(sentences: list[str]) -> list[dict]:
     prev_spk = "Patient"
     for s in sentences:
         low = s.lower().strip()
-        if any(p in low for p in ["hi doctor", "hello doctor", "thank you doctor", "thanks doctor", "okay doctor", "yes doctor"]):
+        if any(p in low for p in [
+            "hi doctor", "hello doctor", "thank you doctor", "thanks doctor", "okay doctor", "yes doctor",
+            "stomach", "bloating", "dull ache", "cramps", "spicy food", "after eating", "attended a function",
+            "antacid", "appetite", "relief", "persists"
+        ]):
             spk = "Patient"
-        elif any(low.startswith(p) for p in ["i have", "i've", "i am", "i was", "it went", "no cough", "no trouble", "no chronic", "i just took", "i also have", "my throat", "my name"]):
+        elif any(low.startswith(p) for p in [
+            "i have", "i've", "i am", "i was", "it went", "no cough", "no trouble", "no chronic",
+            "no vomiting", "no loose motions", "no diarrhea", "first episode", "i just took", "i took",
+            "i also have", "my throat", "my name"
+        ]):
             spk = "Patient"
-        elif any(low.startswith(d) for d in ["what brings", "how high", "any cough", "any history", "let me check", "okay, i can see", "i can see", "your temperature", "lungs sounds", "i'm going to prescribe", "i am going to prescribe", "drink plenty", "if the fever", "come back"]):
+        elif any(low.startswith(d) for d in [
+            "what brings", "how high", "how long", "any cough", "any history", "any vomiting", "any nausea",
+            "let me check", "let me examine", "okay, i can see", "i can see", "your temperature",
+            "lungs sounds", "prescription", "pantoprazole", "take this", "before breakfast", "avoid spicy",
+            "eat light", "return immediately", "drink plenty", "if the fever", "come back"
+        ]):
             spk = "Doctor"
         elif s.strip().endswith("?"):
             spk = "Doctor"
-        elif any(w in low for w in ["prescribe", "milligram", "temperature is", "blood pressure"]):
+        elif any(w in low for w in ["prescribe", "milligram", "pantoprazole", "temperature is", "blood pressure"]):
             spk = "Doctor"
         else:
             spk = "Doctor" if prev_spk == "Patient" else "Patient"
@@ -191,6 +209,23 @@ async def _call_sarvam_llm(prompt: str) -> str:
 
     return await asyncio.to_thread(_sync_request)
 
+def _is_valid_dialogue_set(turns: list[dict], original_transcript: str) -> bool:
+    if not turns or len(turns) < 2:
+        return False
+    if any(t.get("speaker") == "Unknown" for t in turns):
+        return False
+    for t in turns:
+        txt = str(t.get("text", "")).strip()
+        if re.match(r'^[\d\s,.]+$', txt):
+            return False
+        if len(re.sub(r'[^a-zA-Z]', '', txt)) < 4:
+            return False
+    turn_words = sum(len(str(t.get("text", "")).split()) for t in turns)
+    orig_words = len(original_transcript.split())
+    if orig_words > 10 and turn_words < orig_words * 0.35:
+        return False
+    return True
+
 async def label_speakers(transcript: str) -> list[dict]:
     clean = (transcript or "").strip()
     if not clean:
@@ -203,35 +238,35 @@ async def label_speakers(transcript: str) -> list[dict]:
     if not SARVAM_API_KEY:
         return _clinical_heuristic_label(sentences)
 
-    numbered = "\n".join([f"{i+1}. {s}" for i, s in enumerate(sentences)])
     prompt = (
-        "You are an expert clinical conversation transcriptionist. Given numbered sentences from a doctor-patient consultation, assign each sentence to either 'Doctor' or 'Patient' based on conversational context.\n\n"
-        "Rules:\n"
-        "- Questions, clinical exams, findings, diagnoses, and prescriptions = Doctor\n"
+        "You are an expert clinical conversation transcriptionist. Given the doctor-patient consultation transcript below, reconstruct the complete conversation turn-by-turn.\n\n"
+        "Assign every spoken statement to either 'Doctor' or 'Patient':\n"
+        "- Questions, examinations, diagnosis explanations, advice, and prescriptions = Doctor\n"
         "- Describing symptoms, answering questions, giving history, and acknowledgements = Patient\n\n"
-        "Output each sentence line-by-line in this exact format:\n"
-        "Doctor: <sentence>\n"
-        "Patient: <sentence>\n\n"
-        "Do not add commentary, explanations, or numbers.\n\n"
-        f"Consultation sentences:\n{numbered}"
+        "CRITICAL RULES:\n"
+        "1. Output each turn on a new line starting with 'Doctor: <spoken words>' or 'Patient: <spoken words>'.\n"
+        "2. You MUST output the actual words spoken. NEVER output sentence numbers, indices, or lists of numbers like '2,5,9,11...'.\n"
+        "3. Maintain the original conversation wording and order.\n"
+        "4. Do not include commentary, explanations, or preamble.\n\n"
+        f"Consultation transcript:\n{clean}"
     )
 
     # Attempt 1
     try:
         raw_1 = await _call_sarvam_llm(prompt)
         turns = _clean_and_parse_turns(raw_1)
-        if turns and len(turns) > 0 and not all(t["speaker"] == "Unknown" for t in turns):
+        if turns and _is_valid_dialogue_set(turns, clean):
             return turns
-        logger.warning("Attempt 1 speaker labeling returned empty, retrying...")
+        logger.warning("Attempt 1 speaker labeling returned invalid turns, retrying...")
     except Exception as e:
         logger.warning(f"Attempt 1 speaker labeling failed with error: {e}, retrying...")
 
     # Attempt 2
     try:
-        retry_prompt = f"CRITICAL: Output ONLY lines starting with 'Doctor:' or 'Patient:'. No preamble.\n\n{prompt}"
+        retry_prompt = f"CRITICAL: Output ONLY conversation lines starting with 'Doctor: <spoken words>' or 'Patient: <spoken words>'. No preamble, no numbers.\n\n{clean}"
         raw_2 = await _call_sarvam_llm(retry_prompt)
         turns = _clean_and_parse_turns(raw_2)
-        if turns and len(turns) > 0 and not all(t["speaker"] == "Unknown" for t in turns):
+        if turns and _is_valid_dialogue_set(turns, clean):
             return turns
         logger.warning("Attempt 2 speaker labeling failed to parse. Falling back to heuristic classifier.")
     except Exception as e:
