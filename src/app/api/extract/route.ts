@@ -16,10 +16,17 @@ export async function POST(request: Request) {
 
     const [note, turns] = await Promise.all([
       extractClinicalNote(transcript),
-      labelSpeakers(transcript),
+      labelSpeakers(transcript).catch((err) => {
+        console.warn("Non-fatal speaker labeling error in /api/extract:", err);
+        return [];
+      }),
     ]);
 
-    return Response.json({ note, turns, mock: !process.env.SARVAM_API_KEY });
+    return Response.json({
+      note,
+      turns: turns && turns.length > 0 ? turns : [{ speaker: "Doctor", text: transcript }],
+      mock: !process.env.SARVAM_API_KEY,
+    });
   } catch (error) {
     return toErrorResponse(error);
   }
@@ -32,6 +39,7 @@ function toErrorResponse(error: unknown) {
   if (error instanceof UpstreamApiError) {
     return Response.json({ error: error.message }, { status: error.status });
   }
+  const msg = error instanceof Error ? error.message : "Unexpected server error while extracting the clinical note.";
   console.error("Unexpected /api/extract error:", error);
-  return Response.json({ error: "Unexpected server error while extracting the clinical note." }, { status: 500 });
+  return Response.json({ error: msg }, { status: 500 });
 }

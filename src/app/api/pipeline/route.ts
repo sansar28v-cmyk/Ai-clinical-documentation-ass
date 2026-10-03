@@ -28,7 +28,10 @@ export async function POST(request: Request) {
     const sttResult = await transcribeAudio(file);
     const [note, turns] = await Promise.all([
       extractClinicalNote(sttResult.transcript),
-      labelSpeakers(sttResult.transcript),
+      labelSpeakers(sttResult.transcript).catch((err) => {
+        console.warn("Non-fatal speaker labeling error in /api/pipeline:", err);
+        return [];
+      }),
     ]);
 
     const mock = !process.env.SARVAM_API_KEY;
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
       transcript: sttResult.transcript,
       language_code: sttResult.language_code,
       note,
-      turns,
+      turns: turns && turns.length > 0 ? turns : [{ speaker: "Doctor", text: sttResult.transcript }],
       mock,
     });
   } catch (error) {
@@ -51,6 +54,7 @@ function toErrorResponse(error: unknown) {
   if (error instanceof UpstreamApiError) {
     return Response.json({ error: error.message }, { status: error.status });
   }
+  const msg = error instanceof Error ? error.message : "Unexpected server error while processing the consultation.";
   console.error("Unexpected /api/pipeline error:", error);
-  return Response.json({ error: "Unexpected server error while processing the consultation." }, { status: 500 });
+  return Response.json({ error: msg }, { status: 500 });
 }

@@ -79,7 +79,7 @@ async function callSarvam(apiKey: string, transcript: string, retryHint?: string
     : `Consultation transcript:\n"""\n${transcript}\n"""`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
@@ -579,7 +579,7 @@ Preserve the original wording exactly — do not paraphrase or summarize. Split 
 Transcript:`;
 
 function splitIntoSentences(text: string): string[] {
-  const raw = text.trim().split(/(?<=[.?!])\s+/);
+  const raw = text.trim().split(/(?:(?<=[.?!|।])\s+|\r?\n+)/);
   return raw.map((s) => s.trim()).filter(Boolean);
 }
 
@@ -610,8 +610,8 @@ function parseDialogueLines(raw: string): SpeakerTurn[] | null {
 
     if (speaker && text) {
       // Reject if text is purely numbers/indices e.g. "2,5,9,11,12,14,16,21."
-      const alphaCount = text.replace(/[^a-zA-Z]/g, "").length;
-      if (alphaCount < 3 || /^[\d\s,.]+$/.test(text)) {
+      const letterCount = text.replace(/[^\p{L}\p{N}]/gu, "").length;
+      if (letterCount < 2 || /^[\d\s,.:;-]+$/.test(text)) {
         continue;
       }
 
@@ -728,7 +728,7 @@ async function callSarvamGeneric(apiKey: string, prompt: string): Promise<string
   const clean = cleanApiKey(apiKey);
   const model = getSarvamLlmModel();
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 40000);
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
   try {
     const response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
@@ -741,7 +741,7 @@ async function callSarvamGeneric(apiKey: string, prompt: string): Promise<string
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        max_tokens: 2048,
+        max_tokens: 1536,
         temperature: 0,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -826,8 +826,8 @@ function sanitizeTurns(items: unknown[]): SpeakerTurn[] {
     if (!text || text === "...") continue;
 
     // Reject if text is purely numbers/indices e.g. "2,5,9,11,12,14,16,21."
-    const alphaCount = text.replace(/[^a-zA-Z]/g, "").length;
-    if (alphaCount < 3 || /^[\d\s,.]+$/.test(text)) {
+    const letterCount = text.replace(/[^\p{L}\p{N}]/gu, "").length;
+    if (letterCount < 2 || /^[\d\s,.:;-]+$/.test(text)) {
       continue;
     }
 
@@ -851,13 +851,13 @@ function isValidDialogueSet(turns: SpeakerTurn[], originalTranscript: string): b
   if (turns.some((t) => t.speaker === "Unknown")) return false;
   for (const t of turns) {
     const text = t.text.trim();
-    if (/^[\d\s,.]+$/.test(text)) return false;
-    const alphaCount = text.replace(/[^a-zA-Z]/g, "").length;
-    if (alphaCount < 4) return false;
+    if (/^[\d\s,.:;-]+$/.test(text)) return false;
+    const letterCount = text.replace(/[^\p{L}\p{N}]/gu, "").length;
+    if (letterCount < 2) return false;
   }
   const turnWords = turns.reduce((acc, t) => acc + t.text.split(/\s+/).length, 0);
   const origWords = originalTranscript.split(/\s+/).length;
-  if (origWords > 10 && turnWords < origWords * 0.35) {
+  if (origWords > 10 && turnWords < origWords * 0.25) {
     return false;
   }
   return true;
@@ -897,38 +897,24 @@ Assign every spoken statement to either 'Doctor' or 'Patient':
 
 CRITICAL RULES:
 1. Output each turn on a new line starting with "Doctor: <spoken words>" or "Patient: <spoken words>".
-2. You MUST output the actual words spoken. NEVER output sentence numbers, indices, or lists of numbers like "2,5,9,11...".
+2. You MUST output the actual words spoken in their original language. NEVER output numbers or sentence indices.
 3. Maintain the original conversation wording and order.
 4. Do not include commentary, explanations, or preamble.
 
 Consultation transcript:
 ${clean}`;
 
-  // Attempt 1: Full transcript dialogue prompt
   try {
     const rawAttempt1 = await callSarvamGeneric(apiKey, promptUser);
     const parsed1 = parseSpeakerTurns(rawAttempt1);
     if (parsed1 && parsed1.length > 1 && isValidDialogueSet(parsed1, clean)) {
       return parsed1;
     }
-    console.warn("Attempt 1 speaker labeling returned invalid turns, retrying...");
   } catch (err) {
-    console.warn("Attempt 1 speaker labeling encountered an error:", err);
+    console.warn("Sarvam speaker labeling non-fatal fallback:", err);
   }
 
-  // Attempt 2: Strict format instruction retry
-  try {
-    const retryPrompt = `CRITICAL: Output ONLY conversation lines starting with "Doctor: <spoken words>" or "Patient: <spoken words>". No preamble, no numbers.\n\n${clean}`;
-    const rawAttempt2 = await callSarvamGeneric(apiKey, retryPrompt);
-    const parsed2 = parseSpeakerTurns(rawAttempt2);
-    if (parsed2 && parsed2.length > 1 && isValidDialogueSet(parsed2, clean)) {
-      return parsed2;
-    }
-  } catch (err) {
-    console.error("Attempt 2 speaker labeling error:", err);
-  }
-
-  // Fallback: Intelligent clinical pattern classifier
+  // Fast fallback: Intelligent clinical pattern classifier
   return clinicalHeuristicLabel(sentences);
 }
 

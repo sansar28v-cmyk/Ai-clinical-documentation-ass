@@ -413,10 +413,54 @@ export default function ClinicalDemo({
     try {
       const formData = new FormData();
       formData.append("audio", file);
+
+      // Attempt two-stage execution: STT first via /api/transcribe, then LLM note extraction via /api/extract.
+      // Splitting these avoids single-request serverless function timeout limits (such as Vercel's 60s cap).
+      const transcribeRes = await fetch("/api/transcribe", { method: "POST", body: formData });
+      const transcribeData = await transcribeRes.json().catch(() => ({}));
+
+      if (transcribeRes.ok && transcribeData?.transcript) {
+        const transcriptText = transcribeData.transcript;
+        setTranscript(transcriptText);
+        if (transcribeData.language_code) {
+          setDetectedLang(transcribeData.language_code);
+        }
+
+        const extractRes = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: transcriptText }),
+        });
+        const extractData = await extractRes.json().catch(() => ({}));
+
+        if (!extractRes.ok) {
+          throw new Error(
+            extractData?.error ||
+              "Audio was transcribed successfully, but clinical note extraction encountered an error. Please retry."
+          );
+        }
+
+        setNote({ ...EMPTY_CLINICAL_NOTE, ...extractData.note });
+        setTurns(Array.isArray(extractData.turns) ? extractData.turns : []);
+        setMockMode(Boolean(transcribeData.mock || extractData.mock));
+        setStage("review");
+        return;
+      }
+
+      // If /api/transcribe returned an error or was unavailable, try /api/pipeline directly
       const res = await fetch("/api/pipeline", { method: "POST", body: formData });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data?.error || "Something went wrong while processing the recording.");
+        const timeoutHint =
+          res.status === 504
+            ? "Audio processing timed out on the cloud server. Please try a shorter audio clip or retry."
+            : null;
+        throw new Error(
+          data?.error ||
+            transcribeData?.error ||
+            timeoutHint ||
+            "Something went wrong while processing the recording."
+        );
       }
       setTranscript(data.transcript ?? "");
       setNote({ ...EMPTY_CLINICAL_NOTE, ...data.note });

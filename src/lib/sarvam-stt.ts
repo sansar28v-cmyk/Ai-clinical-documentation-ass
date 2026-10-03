@@ -2,7 +2,20 @@ import { UpstreamApiError } from "@/lib/clinical-note";
 import { MOCK_TRANSCRIPT } from "@/lib/mock";
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // practical upload limit
-const ALLOWED_EXTENSIONS = [".wav", ".mp3", ".m4a", ".mp4", ".mpeg", ".mpga", ".webm", ".ogg"];
+const ALLOWED_EXTENSIONS = [
+  ".wav",
+  ".mp3",
+  ".m4a",
+  ".mp4",
+  ".mpeg",
+  ".mpga",
+  ".webm",
+  ".ogg",
+  ".aac",
+  ".flac",
+  ".opus",
+  ".oga",
+];
 
 /**
  * Sarvam STT model to use for transcription.
@@ -24,8 +37,11 @@ export interface SarvamTranscriptionResult {
 
 export function assertSupportedAudioFile(file: File): void {
   const name = file.name?.toLowerCase() ?? "";
+  const mime = file.type?.toLowerCase() ?? "";
+  const isAudioMime = mime.startsWith("audio/") || mime.startsWith("video/");
   const hasAllowedExtension = ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext));
-  if (!hasAllowedExtension) {
+
+  if (!hasAllowedExtension && !isAudioMime) {
     throw new UpstreamApiError(
       `Unsupported file type. Please upload one of: ${ALLOWED_EXTENSIONS.join(", ")}`,
       415,
@@ -62,7 +78,14 @@ function sarvamHeaders(apiKey: string, json = false): Record<string, string> {
 async function transcribeSync(apiKey: string, file: File): Promise<SarvamTranscriptionResult> {
   const clean = cleanApiKey(apiKey);
   const upstreamForm = new FormData();
-  upstreamForm.append("file", file, file.name || "audio");
+
+  let safeName = (file.name || "audio.wav").replace(/[^a-zA-Z0-9._-]/g, "_").replace(/^_+|_+$/g, "");
+  if (!safeName || safeName === ".") safeName = `audio_${Date.now()}`;
+  if (!ALLOWED_EXTENSIONS.some((ext) => safeName.toLowerCase().endsWith(ext))) {
+    safeName += ".wav";
+  }
+
+  upstreamForm.append("file", file, safeName);
   upstreamForm.append("model", SARVAM_STT_MODEL);
 
   const response = await fetch(`${SARVAM_API_BASE}/speech-to-text`, {
@@ -129,7 +152,12 @@ interface BatchJobResponse {
 
 async function transcribeBatch(apiKey: string, file: File): Promise<SarvamTranscriptionResult> {
   const headers = sarvamHeaders(apiKey, true);
-  const fileName = (file.name || "audio.wav").replace(/[^a-zA-Z0-9._-]/g, "_");
+  let safeBatchName = (file.name || "audio.wav").replace(/[^a-zA-Z0-9._-]/g, "_").replace(/^_+|_+$/g, "");
+  if (!safeBatchName || safeBatchName === ".") safeBatchName = `audio_${Date.now()}`;
+  if (!ALLOWED_EXTENSIONS.some((ext) => safeBatchName.toLowerCase().endsWith(ext))) {
+    safeBatchName += ".wav";
+  }
+  const fileName = safeBatchName;
 
   // ── Step 1: Create a batch job ──────────────────────────────────────────
   const createRes = await fetch(`${SARVAM_API_BASE}/speech-to-text/job/v1`, {
