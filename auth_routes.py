@@ -1,6 +1,6 @@
 import logging
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
 from auth_and_db import (
@@ -8,6 +8,7 @@ from auth_and_db import (
     create_consultation,
     create_user,
     get_consultation_by_id,
+    get_consultation_by_share_token,
     get_consultations_for_user,
     get_current_user,
     get_user_by_username,
@@ -152,7 +153,7 @@ async def create_new_consultation(
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     try:
-        cons_id = create_consultation(
+        cons_id, share_token, share_token_expires_at = create_consultation(
             doctor_id=current_user["id"],
             patient_name=req.patient_name,
             transcript=req.transcript,
@@ -162,6 +163,8 @@ async def create_new_consultation(
         )
         return {
             "id": cons_id,
+            "share_token": share_token,
+            "share_token_expires_at": share_token_expires_at,
             "message": "Consultation saved successfully",
         }
     except Exception as e:
@@ -170,3 +173,37 @@ async def create_new_consultation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save consultation.",
         )
+
+
+@router.get("/public/report/{share_token}")
+async def get_public_report(share_token: str):
+    """
+    Public, unauthenticated endpoint to view a finalized consultation note.
+    Uses only unguessable share_token, never exposes internal database IDs,
+    and enforces a 7-day expiration limit.
+    """
+    res = get_consultation_by_share_token(share_token)
+    if not res:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Consultation report not found or link is invalid.",
+        )
+    cons, is_expired = res
+    if is_expired:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Consultation report link expired (7-day validity).",
+        )
+
+    # Return sanitized data only — NEVER expose internal database IDs
+    return {
+        "share_token": cons.get("share_token"),
+        "patient_name": cons.get("patient_name"),
+        "doctor_name": cons.get("doctor_name", "Attending Physician"),
+        "created_at": cons.get("created_at"),
+        "expires_at": cons.get("share_token_expires_at"),
+        "detected_language": cons.get("detected_language", "en-IN"),
+        "note": cons.get("note", {}),
+        "translated_plan": cons.get("translated_plan"),
+    }
+

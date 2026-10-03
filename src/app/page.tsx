@@ -290,8 +290,8 @@ export default function HomePage() {
 
                 <p className="subhead anim" style={{ ["--d" as string]: "0.28s" }}>
                   The AI Clinical Documentation Assistant listens to your consultations, transcribes
-                  them, and drafts a structured clinical note — so you review and finalize in minutes,
-                  not hours.
+                  them, drafts a structured clinical note, and generates an instant multi-language QR code
+                  for patients to download their report in their own language — no login required.
                 </p>
 
                 <div className="cta-group anim" style={{ ["--d" as string]: "0.4s" }}>
@@ -385,6 +385,14 @@ export default function HomePage() {
                   <span className="how-step-num">3</span>
                   <h3>Review &amp; Finalize</h3>
                   <p>Edit any field directly, finalize the note, then export it as text, PDF, or a mock EHR payload.</p>
+                </div>
+                <div className="how-step">
+                  <span className="how-step-num">4</span>
+                  <h3>Instant Patient QR Sharing</h3>
+                  <p>
+                    Patients scan a secure QR code on their phone to immediately view and download their clinical report
+                    in their preferred Indian language (Tamil, Hindi, Telugu, etc.) — no patient login required.
+                  </p>
                 </div>
               </div>
             </div>

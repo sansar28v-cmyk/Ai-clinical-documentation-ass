@@ -34,6 +34,9 @@ export interface ConsultationItem {
   };
   translated_plan?: string | null;
   created_at: string;
+  share_token?: string;
+  share_token_expires_at?: string;
+  detected_language?: string;
 }
 
 export async function apiRequest<T = any>(

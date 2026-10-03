@@ -37,8 +37,12 @@ React component state for the duration of the browser session only.
 | `POST /transcribe` | `src/app/api/transcribe/route.ts` — accepts `multipart/form-data` with an `audio` file, calls Sarvam STT (`saaras:v3`), returns `{ transcript, language_code }` |
 | `POST /extract` | `src/app/api/extract/route.ts` — accepts `{ transcript }` JSON, calls Sarvam-105B, returns `{ note }` |
 | `POST /pipeline` | `src/app/api/pipeline/route.ts` — chains the two above, returns `{ transcript, language_code, note }` |
+| `GET /public/report/{token}` | `src/app/api/public/report/[token]/route.ts` — public unauthenticated endpoint returning consultation report using an unguessable UUID4 token (enforces 7-day expiry; 404 on invalid, 410 on expired) |
+| `POST /api/public/report/{token}/translate` | `src/app/api/public/report/[token]/translate/route.ts` — translates note fields to selected Indian language via Sarvam Translate API (`mayura:v1`) |
+| `GET /public/report/{token}/pdf` | `src/app/public/report/[token]/pdf/route.ts` — generates downloadable PDF of the clinical report in the selected language |
+| `GET /public/report/{token}` (UI) | `src/app/public/report/[token]/page.tsx` — mobile-first, standalone patient report page with language dropdown and PDF download |
 | React frontend | `src/app/page.tsx` + `src/components/*` |
-| Schema / prompt logic | `src/lib/clinical-note.ts`, `src/lib/sarvam-stt.ts`, `src/lib/sarvam-llm.ts` |
+| Schema / prompt logic | `src/lib/clinical-note.ts`, `src/lib/sarvam-stt.ts`, `src/lib/sarvam-llm.ts`, `src/lib/translate.ts`, `src/lib/pdf-generator.ts` |
 
 ## Clinical note schema
 
@@ -109,6 +113,16 @@ Streaming Transcripts (transcript.partial & transcript.final)
   ▼
 Live UI Display ──► Complete & Extract ──► Sarvam-105B Structured Note
 ```
+
+## QR Code Sharing & Multilingual Patient Downloads
+
+When a doctor finalizes a clinical note:
+1. **Unguessable Share Token**: A unique UUID4 token is generated with a strict 7-day expiration policy.
+2. **Instant QR Code Generation**: A QR code (`qrcode.react`) is rendered immediately on the screen encoding `https://<domain>/public/report/{share_token}`.
+3. **No Patient Login Required**: Patients scan the code directly on their smartphone. The standalone, mobile-first patient page requires zero login or authentication.
+4. **On-Demand Sarvam Translation**: Patients can select their preferred Indian language (Tamil, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia). The note fields are translated on the fly via Sarvam's Translate API (`mayura:v1`).
+5. **Downloadable PDF Report**: Patients can download a formatted PDF summary in their selected language via `GET /public/report/{share_token}/pdf?lang=...`.
+6. **Privacy & Security**: Internal consultation database IDs are never exposed; expired tokens return a clean HTTP 410 privacy message, and tokens cannot be enumerated.
 
 ## Environment variables
 

@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiRequest, ConsultationItem } from "@/lib/api";
 import { downloadNoteAsPdf, downloadNoteAsText } from "@/lib/export";
 import { ClinicalNote } from "@/lib/clinical-note";
+import { QRCodeSVG } from "qrcode.react";
 
 interface ConsultationDetailProps {
   consultationId: number;
@@ -21,6 +22,8 @@ export default function ConsultationDetail({
   const [error, setError] = useState<string | null>(null);
   const [dialogueView, setDialogueView] = useState<"script" | "chat" | "raw">("script");
   const [copied, setCopied] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrCopied, setQrCopied] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -155,6 +158,15 @@ export default function ConsultationDetail({
             title="Download PDF note"
           >
             <i className="fa-solid fa-file-pdf" /> PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowQrModal(true)}
+            className="btn-ghost"
+            title="Share QR code with patient"
+            style={{ borderColor: "rgba(59, 130, 246, 0.4)", color: "#93c5fd" }}
+          >
+            <i className="fa-solid fa-qrcode" /> Share QR
           </button>
           <button
             type="button"
@@ -367,6 +379,92 @@ export default function ConsultationDetail({
           </div>
         </div>
       </div>
+
+      {showQrModal && data && (
+        <div className="modal-overlay" onClick={() => setShowQrModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
+            <div className="modal-head">
+              <div>
+                <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <i className="fa-solid fa-qrcode text-primary-accent" />
+                  Patient Report QR Code
+                </h3>
+                <p>Valid for 7 days • No patient login required</p>
+              </div>
+              <button onClick={() => setShowQrModal(false)} className="modal-close" aria-label="Close">
+                ✕
+              </button>
+            </div>
+
+            <div style={{ textAlign: "center", padding: "1.25rem 0" }}>
+              <div className="qr-code-wrapper" style={{ display: "inline-flex", margin: "0 auto 1.25rem auto" }}>
+                <QRCodeSVG
+                  value={
+                    typeof window !== "undefined" && data.share_token
+                      ? `${window.location.origin}/public/report/${data.share_token}`
+                      : ""
+                  }
+                  size={180}
+                  level="M"
+                  includeMargin={false}
+                  bgColor="#ffffff"
+                  fgColor="#0f172a"
+                />
+              </div>
+
+              <div className="qr-patient-instruction" style={{ textAlign: "center", margin: "0 auto 1rem auto" }}>
+                <strong>Patient:</strong> scan to view and download your report in your language
+              </div>
+
+              <div className="qr-link-row" style={{ maxWidth: 460, margin: "0 auto 1rem auto" }}>
+                <input
+                  type="text"
+                  readOnly
+                  value={
+                    typeof window !== "undefined" && data.share_token
+                      ? `${window.location.origin}/public/report/${data.share_token}`
+                      : ""
+                  }
+                  className="qr-link-input"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (typeof window !== "undefined" && data.share_token) {
+                      const url = `${window.location.origin}/public/report/${data.share_token}`;
+                      await navigator.clipboard.writeText(url);
+                      setQrCopied(true);
+                      setTimeout(() => setQrCopied(false), 2000);
+                    }
+                  }}
+                  className="btn-qr-action"
+                  title="Copy link to clipboard"
+                >
+                  <i className={qrCopied ? "fa-solid fa-check" : "fa-regular fa-copy"} />
+                  <span>{qrCopied ? "Copied!" : "Copy"}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ justifyContent: "space-between" }}>
+              {data.share_token && (
+                <a
+                  href={`/public/report/${data.share_token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-qr-action primary"
+                >
+                  <i className="fa-solid fa-arrow-up-right-from-square" /> Open Patient View
+                </a>
+              )}
+              <button onClick={() => setShowQrModal(false)} className="btn-ghost">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,8 +2,9 @@ import json
 import logging
 import os
 import sqlite3
+import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -51,9 +52,23 @@ def init_db():
         note_json TEXT NOT NULL,
         translated_plan TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        share_token TEXT,
+        share_token_expires_at TIMESTAMP,
+        detected_language TEXT DEFAULT 'en-IN',
         FOREIGN KEY (doctor_id) REFERENCES users(id)
     );
     """)
+
+    # Safe column migrations if database already existed
+    for col_def in [
+        "share_token TEXT",
+        "share_token_expires_at TIMESTAMP",
+        "detected_language TEXT DEFAULT 'en-IN'",
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE consultations ADD COLUMN {col_def}")
+        except Exception:
+            pass
 
     conn.commit()
     conn.close()
@@ -141,24 +156,81 @@ def create_consultation(
     turns: Any,
     note: Any,
     translated_plan: Optional[str] = None,
-) -> int:
+    detected_language: str = "en-IN",
+) -> Tuple[int, str, str]:
     turns_str = json.dumps(turns) if not isinstance(turns, str) else turns
     note_str = json.dumps(note) if not isinstance(note, str) else note
+    share_token = str(uuid.uuid4())
+    share_token_expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
 
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         """
         INSERT INTO consultations (
-            doctor_id, patient_name, transcript, turns_json, note_json, translated_plan
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            doctor_id, patient_name, transcript, turns_json, note_json, translated_plan,
+            share_token, share_token_expires_at, detected_language
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (doctor_id, patient_name.strip(), transcript, turns_str, note_str, translated_plan),
+        (
+            doctor_id,
+            patient_name.strip(),
+            transcript,
+            turns_str,
+            note_str,
+            translated_plan,
+            share_token,
+            share_token_expires_at,
+            detected_language,
+        ),
     )
     cons_id = cursor.lastrowid
     conn.commit()
     conn.close()
-    return cons_id
+    return cons_id, share_token, share_token_expires_at
+
+
+def get_consultation_by_share_token(share_token: str) -> Optional[Tuple[Dict[str, Any], bool]]:
+    if not share_token:
+        return None
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT c.*, u.full_name as doctor_name 
+        FROM consultations c
+        LEFT JOIN users u ON c.doctor_id = u.id
+        WHERE LOWER(c.share_token) = LOWER(?)
+        """,
+        (share_token.strip(),),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+
+    item = dict(row)
+    try:
+        item["turns"] = json.loads(item["turns_json"]) if item.get("turns_json") else []
+    except Exception:
+        item["turns"] = []
+    try:
+        item["note"] = json.loads(item["note_json"]) if item.get("note_json") else {}
+    except Exception:
+        item["note"] = {}
+
+    is_expired = False
+    if item.get("share_token_expires_at"):
+        try:
+            exp_str = item["share_token_expires_at"]
+            exp = datetime.fromisoformat(exp_str.replace("Z", "+00:00"))
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            is_expired = datetime.now(timezone.utc) > exp
+        except Exception:
+            pass
+
+    return item, is_expired
 
 
 def get_consultations_for_user(user: Dict[str, Any]) -> List[Dict[str, Any]]:

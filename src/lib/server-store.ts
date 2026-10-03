@@ -21,6 +21,9 @@ export interface StoredConsultation {
   note: Record<string, any>;
   translated_plan?: string | null;
   created_at: string;
+  share_token?: string;
+  share_token_expires_at?: string;
+  detected_language?: string;
 }
 
 const STORE_FILE = process.env.VERCEL
@@ -133,6 +136,17 @@ function initStore() {
     }
   }
 
+  // Backfill share tokens for existing consultations if absent
+  if (Array.isArray(globalForStore._consultations)) {
+    for (const c of globalForStore._consultations) {
+      if (!c.share_token) {
+        c.share_token = crypto.randomUUID();
+        c.share_token_expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        c.detected_language = c.detected_language || "en-IN";
+      }
+    }
+  }
+
   if (!globalForStore._userIdCounter || globalForStore._userIdCounter < 10) {
     globalForStore._userIdCounter = 10;
   }
@@ -201,9 +215,14 @@ export function createConsultation(
   transcript: string,
   turns: Array<{ speaker: string; text: string }>,
   note: Record<string, any>,
-  translatedPlan?: string | null
+  translatedPlan?: string | null,
+  detectedLanguage?: string
 ): StoredConsultation {
   initStore();
+  const now = Date.now();
+  const expiresAt = new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const shareToken = crypto.randomUUID();
+
   const newConsultation: StoredConsultation = {
     id: globalForStore._consultationIdCounter!++,
     doctor_id: doctorId,
@@ -213,7 +232,10 @@ export function createConsultation(
     turns: turns || [],
     note: note || {},
     translated_plan: translatedPlan || null,
-    created_at: new Date().toISOString(),
+    created_at: new Date(now).toISOString(),
+    share_token: shareToken,
+    share_token_expires_at: expiresAt,
+    detected_language: detectedLanguage || "en-IN",
   };
   globalForStore._consultations!.unshift(newConsultation);
   saveStoreToFile();
@@ -222,11 +244,49 @@ export function createConsultation(
 
 export function getConsultationsForDoctor(doctorId: number): StoredConsultation[] {
   initStore();
-  return globalForStore._consultations?.filter((c) => c.doctor_id === doctorId) || [];
+  // Ensure share tokens exist on any retrieved consultation
+  return (globalForStore._consultations?.filter((c) => c.doctor_id === doctorId) || []).map((c) => {
+    if (!c.share_token) {
+      c.share_token = crypto.randomUUID();
+      c.share_token_expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      saveStoreToFile();
+    }
+    return c;
+  });
 }
 
 export function getConsultationById(id: number): StoredConsultation | undefined {
   initStore();
-  return globalForStore._consultations?.find((c) => c.id === id);
+  const c = globalForStore._consultations?.find((c) => c.id === id);
+  if (c && !c.share_token) {
+    c.share_token = crypto.randomUUID();
+    c.share_token_expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    saveStoreToFile();
+  }
+  return c;
+}
+
+export interface PublicReportResult {
+  consultation: StoredConsultation;
+  isExpired: boolean;
+}
+
+export function getConsultationByShareToken(shareToken: string): PublicReportResult | null {
+  initStore();
+  if (!shareToken || typeof shareToken !== "string") return null;
+  const clean = shareToken.trim().toLowerCase();
+  const found = globalForStore._consultations?.find(
+    (c) => c.share_token && c.share_token.toLowerCase() === clean
+  );
+  if (!found) return null;
+
+  const isExpired = found.share_token_expires_at
+    ? new Date(found.share_token_expires_at).getTime() < Date.now()
+    : false;
+
+  return {
+    consultation: found,
+    isExpired,
+  };
 }
 

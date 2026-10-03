@@ -10,6 +10,7 @@ import { downloadNoteAsPdf, downloadNoteAsText } from "@/lib/export";
 import { SpeakerTurn } from "@/lib/mock";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import { QRCodeSVG } from "qrcode.react";
 
 type Stage = "idle" | "ready" | "processing" | "review" | "finalized";
 
@@ -47,6 +48,8 @@ export default function ClinicalDemo({
   const [patientName, setPatientName] = useState("Anita Roy");
   const [isSaving, setIsSaving] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
+  const [savedShareToken, setSavedShareToken] = useState<string | null>(null);
+  const [qrCopied, setQrCopied] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>("live");
   const [file, setFile] = useState<File | null>(null);
@@ -366,31 +369,40 @@ export default function ClinicalDemo({
     setStage("idle");
     setShowTranscript(false);
     setSavedId(null);
+    setSavedShareToken(null);
+    setQrCopied(false);
     setSaveError(null);
   }
 
   async function handleFinalize() {
     setStage("finalized");
-    if (token) {
-      setIsSaving(true);
-      setSaveError(null);
-      try {
-        const res = await apiRequest<{ id: number }>("/consultations", {
-          method: "POST",
-          token,
-          body: {
-            patient_name: patientName.trim() || "Consultation Patient",
-            transcript,
-            speaker_turns: turns,
-            note,
-          },
-        });
-        setSavedId(res.id);
-      } catch (err: any) {
-        setSaveError(err.message || "Failed to save consultation to database.");
-      } finally {
-        setIsSaving(false);
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const res = await apiRequest<{
+        id: number;
+        share_token?: string;
+        consultation?: any;
+      }>("/consultations", {
+        method: "POST",
+        token: token || undefined,
+        body: {
+          patient_name: patientName.trim() || "Consultation Patient",
+          transcript,
+          speaker_turns: turns,
+          note,
+          detected_language: detectedLang || "en-IN",
+        },
+      });
+      setSavedId(res.id);
+      const st = res.share_token || res.consultation?.share_token;
+      if (st) {
+        setSavedShareToken(st);
       }
+    } catch (err: any) {
+      setSaveError(err.message || "Failed to save consultation to database.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -1126,6 +1138,84 @@ export default function ClinicalDemo({
                 </div>
               ) : (
                 <div className="export-actions">
+                  {/* QR Code Patient Sharing Component */}
+                  {savedShareToken && (
+                    <div className="patient-share-qr-card">
+                      <div className="qr-code-wrapper">
+                        <QRCodeSVG
+                          value={
+                            typeof window !== "undefined"
+                              ? `${window.location.origin}/public/report/${savedShareToken}`
+                              : `https://clinical.assistant/public/report/${savedShareToken}`
+                          }
+                          size={148}
+                          level="M"
+                          includeMargin={false}
+                          bgColor="#ffffff"
+                          fgColor="#0f172a"
+                        />
+                      </div>
+
+                      <div className="qr-info-column">
+                        <div className="qr-badge-row">
+                          <span className="qr-tag-pill">
+                            <i className="fa-solid fa-qrcode" /> Patient QR Code
+                          </span>
+                          <span className="qr-expiry-pill">
+                            <i className="fa-solid fa-shield-halved" /> 7-Day Secure Access • No Login Required
+                          </span>
+                        </div>
+
+                        <h4 className="qr-card-title">Share Consultation Report with Patient</h4>
+                        <p className="qr-patient-instruction">
+                          <strong>Patient:</strong> scan to view and download your report in your language
+                        </p>
+
+                        <div className="qr-link-row">
+                          <input
+                            type="text"
+                            readOnly
+                            value={
+                              typeof window !== "undefined"
+                                ? `${window.location.origin}/public/report/${savedShareToken}`
+                                : `/public/report/${savedShareToken}`
+                            }
+                            className="qr-link-input"
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (typeof window !== "undefined") {
+                                const url = `${window.location.origin}/public/report/${savedShareToken}`;
+                                await navigator.clipboard.writeText(url);
+                                setQrCopied(true);
+                                setTimeout(() => setQrCopied(false), 2000);
+                              }
+                            }}
+                            className="btn-qr-action"
+                            title="Copy link to clipboard"
+                          >
+                            <i className={qrCopied ? "fa-solid fa-check" : "fa-regular fa-copy"} />
+                            <span>{qrCopied ? "Copied!" : "Copy Link"}</span>
+                          </button>
+                        </div>
+
+                        <div className="qr-buttons-cluster">
+                          <a
+                            href={`/public/report/${savedShareToken}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-qr-action primary"
+                          >
+                            <i className="fa-solid fa-arrow-up-right-from-square" />
+                            <span>Open Patient View</span>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {savedId && (
                     <div className="saved-badge-wrap">
                       <span className="saved-badge">
