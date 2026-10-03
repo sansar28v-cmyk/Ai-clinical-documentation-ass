@@ -1213,7 +1213,7 @@ export default function ClinicalDemo({
 
                         <h4 className="qr-card-title">Share Consultation Report with Patient</h4>
                         <p className="qr-patient-instruction">
-                          <strong>Patient:</strong> scan to view and download your report in your language
+                          <strong>Patient:</strong> scan to view your report in your language
                         </p>
 
                         <div className="qr-link-row">

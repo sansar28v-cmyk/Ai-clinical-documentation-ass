@@ -131,10 +131,6 @@ export default function PatientReportPage({ params }: PageProps) {
     translateTo(newLang);
   }
 
-  function handleDownloadPdf() {
-    const pdfUrl = `/public/report/${token}/pdf?lang=${encodeURIComponent(selectedLanguage)}`;
-    window.open(pdfUrl, "_blank");
-  }
 
   // 1. Loading State
   if (loading) {
@@ -245,7 +241,7 @@ export default function PatientReportPage({ params }: PageProps) {
           </div>
         </header>
 
-        {/* Action Controls Bar: Language Selector + PDF Download */}
+        {/* Action Controls Bar: Language Selector */}
         <section className="action-controls-card">
           <div className="lang-selector-group">
             <label htmlFor="patient-lang-select" className="lang-label">
@@ -273,16 +269,6 @@ export default function PatientReportPage({ params }: PageProps) {
               </div>
             )}
           </div>
-
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            className="btn-download-pdf"
-            title="Download PDF report in selected language"
-          >
-            <i className="fa-solid fa-file-arrow-down" />
-            <span>Download as PDF</span>
-          </button>
         </section>
 
         {/* Clinical Note Sections */}

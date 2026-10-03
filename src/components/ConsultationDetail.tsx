@@ -413,7 +413,7 @@ export default function ConsultationDetail({
               </div>
 
               <div className="qr-patient-instruction" style={{ textAlign: "center", margin: "0 auto 1rem auto" }}>
-                <strong>Patient:</strong> scan to view and download your report in your language
+                <strong>Patient:</strong> scan to view your report in your language
               </div>
 
               <div className="qr-link-row" style={{ maxWidth: 460, margin: "0 auto 1rem auto" }}>
