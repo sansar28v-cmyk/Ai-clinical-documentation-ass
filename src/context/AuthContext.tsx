@@ -101,8 +101,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const redirectTo =
-        typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+      // Robust origin detection for Vercel production & preview deployments
+      let redirectOrigin = "";
+      if (typeof window !== "undefined" && window.location.origin) {
+        redirectOrigin = window.location.origin;
+      } else if (process.env.NEXT_PUBLIC_SITE_URL) {
+        redirectOrigin = process.env.NEXT_PUBLIC_SITE_URL;
+      } else if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+        redirectOrigin = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+      }
+
+      const redirectTo = redirectOrigin
+        ? `${redirectOrigin.replace(/\/+$/, "")}/`
+        : undefined;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
