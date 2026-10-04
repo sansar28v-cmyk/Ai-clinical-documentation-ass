@@ -43,12 +43,14 @@
   height: 48px !important;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  background: rgba(20, 20, 24, 0.9) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5) !important;
   display: grid;
   place-items: center;
-  transition: transform 0.2s ease;
-  border: none;
+  transition: all 0.2s ease;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
@@ -56,6 +58,8 @@
 
 .logo-btn:hover {
   transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.7) !important;
 }
 
 .logo-btn img {
@@ -66,7 +70,7 @@
   display: block;
 }
 
-/* Nav Pill adjustments for logged-in and landing states */
+/* Nav Pill adjustments for logged-in and landing states - Black Glass Theme */
 .nav-pill {
   display: inline-flex !important;
   align-items: center !important;
@@ -77,8 +81,11 @@
   height: 48px !important;
   padding: 4px 8px !important;
   border-radius: 999px !important;
-  background: #ffffff !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16) !important;
+  background: rgba(18, 18, 22, 0.88) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
   list-style: none !important;
   margin: 0 !important;
   gap: 2px !important;
@@ -100,8 +107,8 @@
   font-weight: 500 !important;
   font-size: 13.5px !important;
   letter-spacing: -0.01em !important;
-  color: var(--nav-text, #2e2e2e) !important;
-  opacity: 0.55 !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  opacity: 0.85 !important;
   white-space: nowrap !important;
   border-radius: 999px !important;
   transition: all 0.2s ease !important;
@@ -111,14 +118,17 @@
 }
 
 .nav-link:hover {
-  opacity: 0.9 !important;
-  background: rgba(0, 0, 0, 0.04) !important;
+  opacity: 1 !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .nav-link.active {
   opacity: 1 !important;
   font-weight: 600 !important;
-  color: #000000 !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Navigation User Profile Badge & Logout */
@@ -384,10 +394,11 @@
 
 .auth-role-tab.active,
 .auth-mode-tab.active {
-  background: #ffffff;
-  color: #000000;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 
 .auth-role-tab i,
@@ -432,7 +443,7 @@
   width: 100%;
   display: flex;
   justify-content: center;
-  min-height: 44px;
+  min-height: 0;
 }
 
 .google-custom-btn {
@@ -442,23 +453,25 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: #ffffff;
-  color: #1f2937;
-  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   padding: 11px 20px;
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   transition: all 0.2s ease;
 }
 
 .google-custom-btn:hover:not(:disabled) {
-  background: #f9fafb;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #ffffff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .google-custom-btn:disabled {

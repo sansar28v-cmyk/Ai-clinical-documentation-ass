@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 interface AuthViewProps {
@@ -38,8 +38,6 @@ export default function AuthView({
   const [localError, setLocalError] = useState<string | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleScriptReady, setGoogleScriptReady] = useState(false);
-
-  const googleBtnContainerRef = useRef<HTMLDivElement>(null);
 
   const handleModeSwitch = (newMode: "login" | "signup") => {
     setMode(newMode);
@@ -80,19 +78,6 @@ export default function AuthView({
           auto_select: false,
           cancel_on_tap_outside: true,
         });
-
-        if (googleBtnContainerRef.current) {
-          googleBtnContainerRef.current.innerHTML = "";
-          g.renderButton(googleBtnContainerRef.current, {
-            theme: "filled_blue",
-            size: "large",
-            type: "standard",
-            shape: "pill",
-            text: mode === "signup" ? "signup_with" : "continue_with",
-            logo_alignment: "left",
-            width: 320,
-          });
-        }
         setGoogleScriptReady(true);
       } catch (e) {
         console.warn("Google button init error:", e);
@@ -237,14 +222,8 @@ export default function AuthView({
           </div>
         )}
 
-        {/* ── Google One-Click Sign In ── */}
+        {/* ── Google Sign In ── */}
         <div className="google-auth-box">
-          <div
-            ref={googleBtnContainerRef}
-            className="google-btn-wrapper"
-            style={{ display: "flex", justifyContent: "center", minHeight: 44 }}
-          />
-
           <button
             type="button"
             onClick={handleGoogleAuthClick}

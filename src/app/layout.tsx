@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,9 +45,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>
           {children}
         </Providers>
-        {/* beforeInteractive loads this self-hosted script before any app code,
-            guaranteeing the mobile menu + stats count-up work on first paint. */}
-        <Script src="/main.js" strategy="beforeInteractive" />
       </body>
     </html>
   );

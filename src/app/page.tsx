@@ -143,19 +143,7 @@ export default function HomePage() {
                       How It Works
                     </a>
                   </li>
-                  <li>
-                    <a
-                      href="/public/report/demo"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="nav-link"
-                      title="Experience the multilingual patient report portal (scannable via QR code)"
-                      style={{ color: "#38bdf8", display: "inline-flex", alignItems: "center", gap: "6px" }}
-                    >
-                      <i className="fa-solid fa-qrcode" />
-                      <span>Patient QR Demo</span>
-                    </a>
-                  </li>
+
                 </>
               )}
             </ul>
@@ -383,8 +371,8 @@ export default function HomePage() {
               <div className="how-steps">
                 <div className="how-step">
                   <span className="how-step-num">1</span>
-                  <h3>Upload the Recording</h3>
-                  <p>Drop in a .wav/.mp3 recording of the doctor-patient consultation — nothing is saved to disk without authorization.</p>
+                  <h3>Record Live or Upload</h3>
+                  <p>Hit the mic to record a live consultation, or upload a .wav/.mp3 file — nothing is saved to disk without authorization.</p>
                 </div>
                 <div className="how-step">
                   <span className="how-step-num">2</span>
@@ -421,13 +409,73 @@ export default function HomePage() {
 
       {/* ---------------- Footer / contact ---------------- */}
       <footer id="contact" className="site-footer">
-        <div className="footer-inner">
-          <p>
-            🔒 Privacy by design — audio and transcripts are processed in memory for this session
-            only and are never written to disk without authorization.
+        <div className="footer-top">
+          <div className="footer-brand">
+            <div className="footer-logo-row">
+              <img src="/assets/logo.png" alt="" width={36} height={36} />
+              <span className="footer-brand-name">AI Clinical Doc Assistant</span>
+            </div>
+            <p className="footer-tagline">
+              Chart Less. Care More. — AI-powered clinical documentation that gives doctors
+              back their time and patients a clear, multilingual report.
+            </p>
+            <div className="footer-badges">
+              <span className="footer-badge">
+                <i className="fa-solid fa-shield-halved" /> HIPAA-Mindful
+              </span>
+              <span className="footer-badge">
+                <i className="fa-solid fa-lock" /> In-Memory Processing
+              </span>
+              <span className="footer-badge">
+                <i className="fa-solid fa-language" /> Multilingual
+              </span>
+            </div>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Product</h4>
+            <ul className="footer-links">
+              <li><a href="#home">Home</a></li>
+              <li><a href="#how-it-works">How It Works</a></li>
+              <li><a href="#demo">Live Demo</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Resources</h4>
+            <ul className="footer-links">
+              <li><a href="#how-it-works">Documentation</a></li>
+              <li><a href="#demo">API Overview</a></li>
+              <li><a href="#how-it-works">Privacy &amp; Security</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Get in Touch</h4>
+            <ul className="footer-links">
+              <li>
+                <a href="mailto:sansar28v@gmail.com">
+                  <i className="fa-solid fa-envelope" /> sansar28v@gmail.com
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/sansar28v-cmyk/Ai-clinical-documentation-ass" target="_blank" rel="noopener noreferrer">
+                  <i className="fa-brands fa-github" /> GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="footer-divider" />
+
+        <div className="footer-bottom">
+          <p className="footer-copy">
+            &copy; {new Date().getFullYear()} AI Clinical Documentation Assistant. All rights reserved.
           </p>
-          <p>
-            Questions? <a href="mailto:hello@clinicaldocassistant.ai">hello@clinicaldocassistant.ai</a>
+          <p className="footer-privacy">
+            <i className="fa-solid fa-shield-halved" /> Privacy by design — audio and transcripts are
+            processed in memory only and are never written to disk without authorization.
           </p>
         </div>
       </footer>
